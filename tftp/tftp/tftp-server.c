@@ -15,7 +15,7 @@
 #include <err.h>
 #include <time.h>
 #define SIZE 512
-
+#define PORT 69
 typedef struct readSize {
 	short blockNumber;
 	int sizeRead;
@@ -46,7 +46,7 @@ readSize recvData(FILE* fp,char* buf, int sockfd, const struct sockaddr *dest_ad
 
 }
 
-#define PORT 69
+
 
 
 int init_server() {
