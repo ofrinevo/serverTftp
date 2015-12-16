@@ -16,11 +16,13 @@
 #include <time.h>
 #define SIZE 512
 #define PORT 69
+
 typedef struct readSize {
 	short blockNumber;
 	int sizeRead;
 } readSize;
 
+//return num of bytes read from the file on success, -1 else
 int sendData(FILE* fp,short blockNumber,int sockfd,const struct sockaddr *dest_adrr,socklen_t addrLen){
 	if (fseek(fp, blockNumber*SIZE, SEEK_SET)) {
 		perror("fseek");
@@ -42,8 +44,21 @@ int sendData(FILE* fp,short blockNumber,int sockfd,const struct sockaddr *dest_a
 	return sizeRead;
 }
 
-readSize recvData(FILE* fp,char* buf, int sockfd, const struct sockaddr *dest_adrr, socklen_t addrLen) {
+//returns 0 on success, -1 else
+int sendAck(short blockNumber, int sockfd, const struct sockaddr *dest_adrr, socklen_t addrLen) {
+	char buf[4];
+	short opcode = 4;
+	if (sprintf(buf, "%hd%hd", opcode, blockNumber)) {
+		perror("sprintf");
+		return -1;
+	}
+	sendto(sockfd, &buf, SIZE + 4, 0, dest_adrr, addrLen);
+	return 0;
+}
 
+
+readSize recvData(FILE* fp,char* buf, int sockfd, const struct sockaddr *dest_adrr, socklen_t addrLen) {
+	//TODO
 }
 
 
