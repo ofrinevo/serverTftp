@@ -16,6 +16,9 @@
 #include <time.h>
 
 #define PORT 69
+#define TRUE 1
+#define FALSE 0
+#define DEBUG 1
 
 
 int init_server() {
@@ -23,7 +26,7 @@ int init_server() {
 	
 	socklen_t addrlen = sizeof(remaddr);
 	int sockfd;
-	if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+	if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
 		perror("Error creating socket\n");
 		return -1;
 	}
@@ -35,12 +38,12 @@ int init_server() {
 		perror("Error binding\n");
 		return -1;
 	}
-	return 0;
+	return sockfd;
 }
 
 int sendData()
 {
-
+ 
 }
 
 int recvData() {
@@ -49,6 +52,21 @@ int recvData() {
 
 
 int main() {
+	//server loop:
+	int cntRead, cntWrite;
+	int sockfd = init_server();
+	if (sockfd < 0)
+		return 0; //error- terminating program!
 
+
+	
+
+	while (TRUE) {
+		/*	read from client
+			look for op code
+			see if legal
+			send ack msg
+		*/
+	}
 	return 0;
 }
