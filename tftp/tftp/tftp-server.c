@@ -17,6 +17,13 @@
 #define SIZE 512
 #define PORT 69
 
+#define OPCODE_RRQ 1
+#define OPCODE_WRQ 2
+#define OPCODE_DATA 3
+#define OPCODE_ACK 4
+#define OPCODE_ERROR 5
+
+
 typedef struct readSize {
 	short blockNumber;
 	int sizeRead;
@@ -29,7 +36,7 @@ int sendData(FILE* fp,short blockNumber,int sockfd,const struct sockaddr *dest_a
 		return -1;
 	}
 	char buf[SIZE+4];
-	short opcode = 3;
+	short opcode = OPCODE_DATA;
 	if (sprintf(buf, "%hd%hd", opcode, blockNumber)) {
 		perror("sprintf");
 		return -1;
@@ -47,7 +54,7 @@ int sendData(FILE* fp,short blockNumber,int sockfd,const struct sockaddr *dest_a
 //returns 0 on success, -1 else
 int sendAck(short blockNumber, int sockfd, const struct sockaddr *dest_adrr, socklen_t addrLen) {
 	char buf[4];
-	short opcode = 4;
+	short opcode = OPCODE_ACK;
 	if (sprintf(buf, "%hd%hd", opcode, blockNumber)) {
 		perror("sprintf");
 		return -1;
