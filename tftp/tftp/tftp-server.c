@@ -68,7 +68,9 @@ readSize recvData(FILE* fp,char* buf, int sockfd, const struct sockaddr *dest_ad
 	//TODO
 }
 
+int handleRequest(int* opcode, char* bufRecive, char** fileName) {
 
+}
 
 
 int init_server() {
@@ -91,14 +93,6 @@ int init_server() {
 	return 0;
 }
 
-int sendData()
-{
-
-}
-
-int recvData() {
-	//recvfrom(int sockfd, void *buf, size_t len, int flags,struct sockaddr *src_addr, socklen_t *addrlen);
-}
 
 
 int main() {
