@@ -55,11 +55,21 @@ int sendData(FILE* fp,short blockNumber,int sockfd,const struct sockaddr *dest_a
 int sendAck(short blockNumber, int sockfd, const struct sockaddr *dest_adrr, socklen_t addrLen) {
 	char buf[4];
 	short opcode = OPCODE_ACK;
-	if (sprintf(buf, "%hd%hd", opcode, blockNumber)) {
+	if (sprintf(buf, "%hd%hd", opcode, blockNumber) < 0) {
 		perror("sprintf");
 		return -1;
 	}
 	sendto(sockfd, &buf, SIZE + 4, 0, dest_adrr, addrLen);
+	return 0;
+}
+
+int sendError(short errorCode, char* errMsg,int sizeMsg) {
+	char buf[200];
+	if (sprintf(buf, "%lh%s0", errorCode, errMsg) < 0) {
+		perror("sprintf");
+		return -1;
+	}
+	//TODO actual send
 	return 0;
 }
 
@@ -68,8 +78,12 @@ readSize recvData(FILE* fp,char* buf, int sockfd, const struct sockaddr *dest_ad
 	//TODO
 }
 
-int handleRequest(int* opcode, char* bufRecive, char** fileName) {
-
+int handleRequest(short* opcode, char* bufRecive, char** fileName) {
+	if (sscanf(bufRecive, "%hd0%s", *opcode, *fileName) != 2) {
+		perror("sscanf");
+		return -1;
+	}
+	return 0;
 }
 
 
