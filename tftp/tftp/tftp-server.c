@@ -16,6 +16,12 @@
 #include <time.h>
 #define SIZE 512
 #define PORT 69
+#define TRUE 1
+#define FALSE 0
+#define DEBUG 1
+
+#define OP_CODE= sizeof(short);
+
 
 #define OPCODE_RRQ 1
 #define OPCODE_WRQ 2
@@ -92,7 +98,7 @@ int init_server() {
 	
 	socklen_t addrlen = sizeof(remaddr);
 	int sockfd;
-	if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+	if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
 		perror("Error creating socket\n");
 		return -1;
 	}
@@ -102,14 +108,30 @@ int init_server() {
 	myaddr.sin_port = htons(PORT);
 	if (bind(sockfd, (struct sockaddr *)&myaddr, sizeof(myaddr)) < 0) {
 		perror("Error binding\n");
+		close(sockfd);
 		return -1;
 	}
-	return 0;
+	return sockfd;
 }
 
 
 
 int main() {
+	//server loop:
+	int cntRead, cntWrite;
+	int sockfd = init_server();
+	if (sockfd < 0)
+		return 0; //error- terminating program!
 
+
+	
+
+	while (TRUE) {
+		/*	read from client
+			look for op code
+			see if legal
+			send ack msg
+		*/
+	}
 	return 0;
 }
