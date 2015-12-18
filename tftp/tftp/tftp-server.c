@@ -23,7 +23,6 @@
 #define OP_CODE= sizeof(short);
 
 
-
 #define OPCODE_RRQ 1
 #define OPCODE_WRQ 2
 #define OPCODE_DATA 3
