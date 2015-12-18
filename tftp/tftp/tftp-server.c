@@ -20,6 +20,10 @@
 #define FALSE 0
 #define DEBUG 1
 
+#define OP_CODE= sizeof(short);
+
+
+
 typedef struct readSize {
 	short blockNumber;
 	int sizeRead;
@@ -82,6 +86,7 @@ int init_server() {
 	myaddr.sin_port = htons(PORT);
 	if (bind(sockfd, (struct sockaddr *)&myaddr, sizeof(myaddr)) < 0) {
 		perror("Error binding\n");
+		close(sockfd);
 		return -1;
 	}
 	return sockfd;
