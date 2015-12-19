@@ -52,7 +52,7 @@ int sendData(FILE* fp, short blockNumber, int sockfd, const struct sockaddr *des
 		perror("sprintf");
 		return -1;
 	}
-		
+
 	int sizeRead = fread(buf, SIZE, 1, fp);
 	if (ferror(fp)) {
 		perror("fread");
@@ -94,7 +94,7 @@ readSize recvData(FILE* fp, char* buf, int sockfd, const struct sockaddr *dest_a
 //Checks if opcode and blocknumber are correct
 //If so, updates the buf to contain the data (only in DATA case)
 //on time out returns -3
-int receive_message(int s, char** buf, struct sockaddr_in* source, short opcode, short blockNumber) {
+int receive_message(int s, char* buf, struct sockaddr_in* source, short opcode, short blockNumber) {
 	socklen_t fromlen = sizeof(struct sockaddr_in);
 	char bufRecive[518];
 	setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(struct timeval));
@@ -166,7 +166,7 @@ int handleFirstRequest(char* bufRecive) {
 
 int init_server() {
 	struct sockaddr_in myaddr, remaddr;
-	
+
 	socklen_t addrlen = sizeof(remaddr);
 	int sockfd;
 	if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
@@ -204,12 +204,12 @@ int handle(short op, char* buf, struct sockaddr_in* source) {
 		if (op == OPCODE_RRQ) {
 			if (state == -1)
 				state = OPCODE_RRQ;
-	}
+		}
 		else if (op == OPCODE_WRQ) {
 			if (state == -1)
 				state = OPCODE_RRQ;
-	}
-		handleFirstRequest(buf);
+		}
+		return handleFirstRequest(buf);
 	}
 	else if (op == OPCODE_DATA) {
 		if (state == OPCODE_RRQ || state == -1)
@@ -257,10 +257,10 @@ int main(int argc, char* argv[]) {
 		//...........
 		//send error if needed:
 		//sendError(errCode, errorMsg(create one or preDefine), size of errorMsg )
-		
+
 		//send ack if needed:
 		//sendAck(blockNumber, sockfd, &source, sizeof(source));
-		
+
 		//close client if finish and assign - clientSoket=0;
 		// start serving other clients
 	}
