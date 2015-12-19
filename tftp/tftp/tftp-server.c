@@ -185,8 +185,7 @@ int init_server() {
 	return sockfd;
 }
 
-static int addrcmp(struct sockaddr_in* addr1, struct sockaddr_in* addr2)
-{
+static int addrcmp(struct sockaddr_in* addr1, struct sockaddr_in* addr2){
 	return memcmp(addr1, addr2, sizeof(struct sockaddr_in));
 }
 
