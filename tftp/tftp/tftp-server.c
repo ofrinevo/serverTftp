@@ -87,12 +87,22 @@ readSize recvData(FILE* fp,char* buf, int sockfd, const struct sockaddr *dest_ad
 }
 
 // returns number of bytes read on success, -1 on error
-int receive_message(int s, char buf[512], struct sockaddr_in* source)
-{
+//Checks if opcode and blocknumber are correct
+//If so, updates the buf to contain the data (only in DATA case)
+int receive_message(int s, char** buf, struct sockaddr_in* source,short opcode,short blockNumber){
 	socklen_t fromlen = sizeof(struct sockaddr_in);
+	char bufRecive[518];
 	int received = recvfrom(s, buf, 512, 0,
 		(struct sockaddr*)source, &fromlen);
-	return received;
+	if (received == -1)
+		return -1;
+	short currBlockNum,currOpCode
+	sscanf(bufRecive, "%hd%hd%s", currOpCode, currBlockNum, buf);
+	if (currBlockNum != blockNumber)
+		return -2;
+	if (currOpCode != opcode)
+		return -2;
+	return recived;
 }
 
 int handleRequest(short* opcode, char* bufRecive, char** fileName) {
