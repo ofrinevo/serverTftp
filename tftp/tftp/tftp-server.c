@@ -248,6 +248,8 @@ int main(int argc, char* argv[]) {
 		op = getOpCode(buf);
 
 		func = handle(op, buf, &source);
+		//func= -2 or -1 error
+		//else;
 		// if func tell us to read:
 		sendData(file, blockNumber, sockfd, &source, sizeof(source));
 		// and update block number if needed!
