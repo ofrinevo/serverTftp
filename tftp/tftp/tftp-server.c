@@ -80,7 +80,7 @@ int sendError(short errorCode, char* errMsg,int sizeMsg) {
 	return 0;
 }
 
-//if you are reading this, we need function that getting commangds from client, not neccerly file name- i did it
+//if you are reading this, we need function that getting commangds from client, not neccerly using FILE- i did it
 // look 1 function below this.. 
 readSize recvData(FILE* fp,char* buf, int sockfd, const struct sockaddr *dest_adrr, socklen_t addrLen) {
 	//TODO
@@ -125,6 +125,36 @@ int init_server() {
 	return sockfd;
 }
 
+static int addrcmp(struct sockaddr_in* addr1, struct sockaddr_in* addr2)
+{
+	return memcmp(addr1, addr2, sizeof(struct sockaddr_in));
+}
+
+/*return function that we need to use..
+	return values- think about this later..*/
+int function(short op, char fileName[100], struct sockaddr_in* source) {
+	if (clientSocket != 0 && addrcmp(source, &clientSocket)){
+		//send error- unknown client!
+	}
+	if (op != OPCODE_RRQ && op != OPCODE_WRQ)
+	{
+		//send error msg..
+	}
+
+	if (strstr(fileName, "/") != NULL || strstr(fileName, "\\") != NULL)
+	{
+		//error msg..
+	}
+
+	if (op == OPCODE_RRQ)
+	{
+		//RRQ msg
+	}
+	if (op == OPCODE_WRQ)
+	{
+		//WRQ msg
+	}
+}
 
 
 int main() {
@@ -147,6 +177,13 @@ int main() {
 			//handle..
 		}
 		handleRequest(&op, buf, fileName);
+		//send to function to decide what do to next..
+		function(op, fileName, &source);
+		// if read- read(look at block number adn update him if needed)
+		// if write- write
+		//send error or ack if needed!
+		//close client if finish and assign - clientSoket=0;
+		// start serving other clients
 	}
 	return 0;
 }
