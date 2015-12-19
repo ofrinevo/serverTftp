@@ -74,7 +74,8 @@ readSize recvData(FILE* fp,char* buf, int sockfd, const struct sockaddr *dest_ad
 	//TODO
 }
 
-int handleRequest(int* opcode, char* bufRecive, char** fileName) {
+
+int handleRequest(short* opcode, char* bufRecive, char** fileName) {
 
 }
 
