@@ -29,6 +29,7 @@
 #define OPCODE_ACK 4
 #define OPCODE_ERROR 5
 
+int clientSocket;
 
 typedef struct readSize {
 	short blockNumber;
@@ -61,7 +62,7 @@ int sendData(FILE* fp,short blockNumber,int sockfd,const struct sockaddr *dest_a
 int sendAck(short blockNumber, int sockfd, const struct sockaddr *dest_adrr, socklen_t addrLen) {
 	char buf[4];
 	short opcode = OPCODE_ACK;
-	if (sprintf(buf, "%hd%hd", opcode, blockNumber)) {
+	if (sprintf(buf, "%hd%hd", opcode, blockNumber) < 0) {
 		perror("sprintf");
 		return -1;
 	}
@@ -69,14 +70,37 @@ int sendAck(short blockNumber, int sockfd, const struct sockaddr *dest_adrr, soc
 	return 0;
 }
 
+int sendError(short errorCode, char* errMsg,int sizeMsg) {
+	char buf[200];
+	if (sprintf(buf, "%lh%s0", errorCode, errMsg) < 0) {
+		perror("sprintf");
+		return -1;
+	}
+	//TODO actual send
+	return 0;
+}
 
+//if you are reading this, we need function that getting commangds from client, not neccerly file name- i did it
+// look 1 function below this.. 
 readSize recvData(FILE* fp,char* buf, int sockfd, const struct sockaddr *dest_adrr, socklen_t addrLen) {
 	//TODO
 }
 
+// returns number of bytes read on success, -1 on error
+int receive_message(int s, char buf[512], struct sockaddr_in* source)
+{
+	socklen_t fromlen = sizeof(struct sockaddr_in);
+	int received = recvfrom(s, buf, 512, 0,
+		(struct sockaddr*)source, &fromlen);
+	return received;
+}
 
 int handleRequest(short* opcode, char* bufRecive, char** fileName) {
-
+	if (sscanf(bufRecive, "%hd0%s", *opcode, *fileName) != 2) {
+		perror("sscanf");
+		return -1;
+	}
+	return 0;
 }
 
 
@@ -106,19 +130,23 @@ int init_server() {
 int main() {
 	//server loop:
 	int cntRead, cntWrite;
+	clientSocket = 0;
 	int sockfd = init_server();
 	if (sockfd < 0)
 		return 0; //error- terminating program!
-
-
-	
-
+	int blockNumber = 0;
+	struct stat statbuf;
+	char buf[512];
+	char fileName[100];
+	short op;
+	struct sockaddr_in source;
+	int recv;
 	while (TRUE) {
-		/*	read from client
-			look for op code
-			see if legal
-			send ack msg
-		*/
+		recv = receive_message(clientSocket==0 ? sockfd:clientSocket, buf, &source );
+		if (recv < 0) {
+			//handle..
+		}
+		handleRequest(&op, buf, fileName);
 	}
 	return 0;
 }
