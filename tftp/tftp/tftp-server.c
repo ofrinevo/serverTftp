@@ -190,6 +190,9 @@ static int addrcmp(struct sockaddr_in* addr1, struct sockaddr_in* addr2)
 	return memcmp(addr1, addr2, sizeof(struct sockaddr_in));
 }
 
+int handleWriting(char* buf,)
+
+
 /*return function that we need to use..
 	return values- think about this later..*/
 int handle(short op, char* buf, struct sockaddr_in* source) {
@@ -239,7 +242,7 @@ int main(int argc, char* argv[]) {
 	struct timeval time = { 3,0 };
 
 	while (TRUE) {
-		recv = receive_message(clientSocket == 0 ? sockfd : clientSocket, buf, &source);
+		recv = receive_message(clientSocket == 0 ? sockfd : clientSocket, buf, &source,);
 		if (recv < 0) {
 			//handle..
 		}
