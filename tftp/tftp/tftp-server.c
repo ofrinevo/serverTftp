@@ -30,11 +30,13 @@
 #define OPCODE_ERROR 5
 
 int clientSocket;
+FILE* file = NULL;
 
 typedef struct readSize {
 	short blockNumber;
 	int sizeRead;
 } readSize;
+
 
 //return num of bytes read from the file on success, -1 else
 int sendData(FILE* fp,short blockNumber,int sockfd,const struct sockaddr *dest_adrr,socklen_t addrLen){
@@ -171,6 +173,9 @@ int main() {
 	short op;
 	struct sockaddr_in source;
 	int recv;
+	int func;
+	int errCode;
+
 	while (TRUE) {
 		recv = receive_message(clientSocket==0 ? sockfd:clientSocket, buf, &source );
 		if (recv < 0) {
@@ -178,10 +183,18 @@ int main() {
 		}
 		handleRequest(&op, buf, fileName);
 		//send to function to decide what do to next..
-		function(op, fileName, &source);
-		// if read- read(look at block number adn update him if needed)
+		func= function(op, fileName, &source);
+		// if func tell us to read:
+		sendData(file, blockNumber, sockfd, &source, sizeof(source));
+		// and update block number if needed!
 		// if write- write
-		//send error or ack if needed!
+		//...........
+		//send error if needed:
+		//sendError(errCode, errorMsg(create one or preDefine), size of errorMsg )
+		
+		//send ack if needed:
+		//sendAck(blockNumber, sockfd, &source, sizeof(source));
+		
 		//close client if finish and assign - clientSoket=0;
 		// start serving other clients
 	}
