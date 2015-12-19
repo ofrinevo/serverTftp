@@ -94,7 +94,7 @@ readSize recvData(FILE* fp, char* buf, int sockfd, const struct sockaddr *dest_a
 //Checks if opcode and blocknumber are correct
 //If so, updates the buf to contain the data (only in DATA case)
 //on time out returns -3
-int receive_message(int s, char** buf, struct sockaddr_in* source, short opcode, short blockNumber) {
+int receive_message(int s, char* buf, struct sockaddr_in* source, short opcode, short blockNumber) {
 	socklen_t fromlen = sizeof(struct sockaddr_in);
 	char bufRecive[518];
 	setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(struct timeval));
@@ -210,7 +210,7 @@ int handle(short op, char* buf, struct sockaddr_in* source) {
 			if (state == -1)
 				state = OPCODE_RRQ;
 		}
-		handleFirstRequest(buf);
+		return handleFirstRequest(buf);
 	}
 	else if (op == OPCODE_DATA) {
 		if (state == OPCODE_RRQ || state == -1)
