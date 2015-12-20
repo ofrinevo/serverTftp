@@ -113,7 +113,7 @@ int sendData(const struct sockaddr *dest_adrr) {
 //returns 0 on success, -1 else
 int sendAck(const struct sockaddr *dest_adrr) {
 	char buf[4];
-	int16_t opcode = htons(OPCODE_DATA);
+	uint16_t opcode = htons(OPCODE_DATA);
 	uint16_t blkTons = htons(blockNumber);
 	if (sprintf(buf, "%hd%hd", opcode, blkTons) < 0) {
 		perror("sprintf");
