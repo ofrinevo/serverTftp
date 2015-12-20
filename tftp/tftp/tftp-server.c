@@ -34,6 +34,7 @@ struct sockaddr_in client;
 
 int blockNumber;
 int clientSocket;
+int serverSocket;
 FILE* file = NULL;
 
 typedef struct readSize {
@@ -271,8 +272,22 @@ int handleWriting(char* buf) {
 	return 0;
 }
 
-int handleReading(char* buf,int blockNumber) {
-	sendData()
+int handleReading(char* buf) {
+	short op, block;
+	sscanf(buf, "%hd%hd", op, block);
+	if (op == OPCODE_ACK) {
+		if (blockNumber != block) {
+			//need to retransmit!
+		}
+		else
+			sendData(file, blockNumber, serverSocket, client, sizeof(client));
+	}
+	else if(op==OPCODE_ERROR)
+	{
+		//retransmit!
+	}
+	else
+		//unexpected opCode 
 }
 
 /*return function that we need to use..
@@ -300,12 +315,14 @@ int handle(short op, char* buf, struct sockaddr_in* source) {
 		else
 			handleWriting(buf);
 	}
-	else if (op == OPCODE_ACK) {
+	else if (op == OPCODE_ACK || OP == OPCODE_ERROR) {
 		if (state == OPCODE_WRQ || state == -1)
 			return -2;
 		else
 			//TODO..
 	}
+	else
+		//unexpected op code- tell the son of a bitch!
 }
 
 
