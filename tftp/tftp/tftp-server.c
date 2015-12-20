@@ -84,11 +84,6 @@ int sendError(short errorCode, char* errMsg, int sizeMsg) {
 	return 0;
 }
 
-//if you are reading this, we need function that getting commangds from client, not neccerly using FILE- i did it
-// look 1 function below this.. 
-readSize recvData(FILE* fp, char* buf, int sockfd, const struct sockaddr *dest_adrr, socklen_t addrLen) {
-	//TODO
-}
 
 // returns number of bytes read on success, -1 on error
 //Checks if opcode and blocknumber are correct
@@ -189,8 +184,22 @@ static int addrcmp(struct sockaddr_in* addr1, struct sockaddr_in* addr2){
 	return memcmp(addr1, addr2, sizeof(struct sockaddr_in));
 }
 
-int handleWriting(char* buf,)
+int handleWriting(char* buf) {
+	char toWrite[518];
+	short op, block;
+	sscanf(buf, "%hd%hd%s", op, block, toWrite);
+	int len = strlen(toWrite);
+	int write = fwrite(toWrite, 1, len, file);
+	if (write != len) {
+		perror("write");
+		return -1;
+	}
+	return 0;
+}
 
+int handleReading(char* buf,int blockNumber) {
+	sendData()
+}
 
 /*return function that we need to use..
 	return values- think about this later..*/
