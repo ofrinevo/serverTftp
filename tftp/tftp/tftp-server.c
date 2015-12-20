@@ -91,8 +91,8 @@ int close_client() {
 }
 
 //return num of bytes read from the file on success, -1 else
-int sendData(FILE* fp, short blockNumber, int sockfd, const struct sockaddr *dest_adrr, socklen_t addrLen) {
-	if (fseek(fp, blockNumber*SIZE, SEEK_SET)) {
+int sendData(const struct sockaddr *dest_adrr) {
+	if (fseek(file, blockNumber*SIZE, SEEK_SET)) {
 		perror("fseek");
 		return -1;
 	}
@@ -103,24 +103,24 @@ int sendData(FILE* fp, short blockNumber, int sockfd, const struct sockaddr *des
 		return -1;
 	}
 
-	int sizeRead = fread(buf, SIZE, 1, fp);
-	if (ferror(fp)) {
+	int sizeRead = fread(buf, SIZE, 1, file);
+	if (ferror(file)) {
 		perror("fread");
 		return -1;
 	}
-	sendto(sockfd, &buf, SIZE + 4, 0, dest_adrr, addrLen);
+	sendto(clientSocket, buf, SIZE + 4, 0, dest_adrr, sizeof(dest_adrr));
 	return sizeRead;
 }
 
 //returns 0 on success, -1 else
-int sendAck(short blockNumber, int sockfd, const struct sockaddr *dest_adrr, socklen_t addrLen) {
+int sendAck( const struct sockaddr *dest_adrr) {
 	char buf[4];
 	short opcode = OPCODE_ACK;
 	if (sprintf(buf, "%hd%hd", opcode, blockNumber) < 0) {
 		perror("sprintf");
 		return -1;
 	}
-	sendto(sockfd, &buf, SIZE + 4, 0, dest_adrr, addrLen);
+	sendto(clientSocket, buf,4, 0, dest_adrr, sizeof(dest_adrr));
 	return 0;
 }
 
@@ -140,11 +140,11 @@ int sendError(short errorCode, char* errMsg, int sizeMsg) {
 //If so, updates the buf to contain the data (only in DATA case)
 //on time out returns -3
 
-int receive_message(int s, char* buf, struct sockaddr_in* source, short opcode, short blockNumber) {
+int receive_message(int sockfd, char* buf, struct sockaddr_in* source, short opcode, short blockNumber) {
 	socklen_t fromlen = sizeof(struct sockaddr_in);
 	char bufRecive[518];
-	setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(struct timeval));
-	int received = recvfrom(s, buf, SIZE, 0, (struct sockaddr*)source, &fromlen);
+	setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(struct timeval));
+	int received = recvfrom(sockfd, buf, SIZE, 0, (struct sockaddr*)source, &fromlen);
 	if (received == -1) {
 		if (errno == EWOULDBLOCK || errno == EAGAIN)
 			return -3;
@@ -200,7 +200,7 @@ int handleFirstRequest(char* bufRecive) {
 		}
 
 		// open the file
-		file = open(g_path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+		file = fopen(g_path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 		if (file == -1){
 			//ERROR
 		}
@@ -276,7 +276,18 @@ int handle(short op, char* buf, struct sockaddr_in* source) {
 	else if (op == OPCODE_DATA) {
 		if (state == OPCODE_RRQ || state == -1)
 			return -2;
-		else
+		else { 
+			handleWriting(buf);
+			sendAck()
+		}
+			//handle writing and send ack
+	}
+	else if (op == OPCODE_ACK) {
+		if (state == OPCODE_WRQ || state = -1)
+			return -2;
+		else{
+			//handle reading
+		}
 			//
 	}
 }
