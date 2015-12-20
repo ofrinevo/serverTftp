@@ -24,6 +24,7 @@
 short state = -1;
 #define OP_CODE= sizeof(short);
 struct timeval timeout;
+struct sockaddr_in client;
 
 #define OPCODE_RRQ 1
 #define OPCODE_WRQ 2
@@ -41,11 +42,6 @@ typedef struct readSize {
 } readSize;
 
 
-//return random TID between 0 and 65535;
-int getRandomTID(){
-	int r = rand() % 65535;
-return r;
-}
 
 //return 1 on success, -1 otherwise
 int init_client()
@@ -62,7 +58,7 @@ int init_client()
 	bzero(&servaddr, sizeof(servaddr));
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-	servaddr.sin_port = htons(getRandomTID());
+	servaddr.sin_port = htons(0);
 
 	
 	if (bind(new_socket, (struct sockaddr *)&servaddr, sizeof(servaddr))<0)
@@ -169,7 +165,7 @@ short getOpCode(char* buf) {
 	return op;
 }
 
-int handleFirstRequest(char* bufRecive) {
+int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
 	short opcode;
 	char* fileName;
 	struct stat fdata;
@@ -187,16 +183,30 @@ int handleFirstRequest(char* bufRecive) {
 			//TODO error
 		}
 		file = fopen(fileName, O_RDONLY);
+		if (file == -1) {
+			// error
+		}
+		// open a new client socket
+		if (init_client()) {
+			close(file);
+			// send_error_message(source, ERROR_NOT_DEFINED, ERRDESC_INTERNAL_ERROR);
+		}
+		state = OPCODE_RRQ;
+		blockNumber = 1;
+		client = *source;
+
+		// send_data_message(source);
 	}
 	else {
-
 		// check if the file already exists
 		if (stat(fileName, &fdata) == 0){
 			//TODO error
+			//send_error_message(source, ERROR_FILE_ALREADY_EXISTS, ERRDESC_WRQ_FILE_ALREADY_EXISTS);
 		}
 		// ENOENT means there is no file, otherwise there is a problem
 		if (errno != ENOENT){
 			//TODO error
+			//send_file_transfer_error_message(source, ERRDESC_STAT_FAILED);
 		}
 
 		// open the file
@@ -204,6 +214,17 @@ int handleFirstRequest(char* bufRecive) {
 		if (file == -1){
 			//ERROR
 		}
+		// open a new client socket
+		if (init_client()) {
+			close(file);
+			// send_error_message(source, ERROR_NOT_DEFINED, ERRDESC_INTERNAL_ERROR);
+		}
+
+		state = OPCODE_WRQ;
+		blockNumber = 0;
+		client = *source;
+
+		// send_ack_message(source);
 	}
 
 	return 0;
@@ -271,13 +292,19 @@ int handle(short op, char* buf, struct sockaddr_in* source) {
 			if (state == -1)
 				state = OPCODE_RRQ;
 		}
-		return handleFirstRequest(buf);
+		return handleFirstRequest(buf,source);
 	}
 	else if (op == OPCODE_DATA) {
 		if (state == OPCODE_RRQ || state == -1)
 			return -2;
 		else
-			//
+			handleWriting(buf);
+	}
+	else if (op == OPCODE_ACK) {
+		if (state == OPCODE_WRQ || state == -1)
+			return -2;
+		else
+			//TODO..
 	}
 }
 
