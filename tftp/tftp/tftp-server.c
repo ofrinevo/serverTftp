@@ -15,6 +15,7 @@
 #include <err.h>
 #include <time.h>
 #include <sys/time.h>
+#include <stdint.h>
 
 #define SIZE 512
 #define PORT 69
