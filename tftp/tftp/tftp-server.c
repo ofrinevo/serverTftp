@@ -31,6 +31,7 @@ struct timeval timeout;
 #define OPCODE_ACK 4
 #define OPCODE_ERROR 5
 
+int blockNumber;
 int clientSocket;
 FILE* file = NULL;
 
@@ -39,6 +40,55 @@ typedef struct readSize {
 	int sizeRead;
 } readSize;
 
+
+//return random TID between 0 and 65535;
+int getRandomTID(){
+	int r = rand() % 65535;
+return r;
+}
+
+//return 1 on success, -1 otherwise
+int init_client()
+{
+	struct sockaddr_in servaddr;
+	int new_socket = socket(AF_INET, SOCK_DGRAM, 0);
+
+	if (new_socket == -1)
+	{
+		printf("Error: socket() failed: %s\n", strerror(errno));
+		return -1;
+	}
+
+	bzero(&servaddr, sizeof(servaddr));
+	servaddr.sin_family = AF_INET;
+	servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+	servaddr.sin_port = htons(getRandomTID());
+
+	
+	if (bind(new_socket, (struct sockaddr *)&servaddr, sizeof(servaddr))<0)
+	{
+		printf("Error: bind() failed: %s\n", strerror(errno));
+		return -1;
+	}
+	if (setsockopt(new_socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
+		printf("Error: setsockopt() failed: %s\n", strerror(errno));
+		return -1;
+	}
+
+	clientSocket = new_socket;
+	return 1;
+}
+
+
+int close_client() {
+	int socket = clientSocket;
+
+	if (socket == 0)
+		return 1;
+
+	clientSocket= 0;
+	return close(socket);
+}
 
 //return num of bytes read from the file on success, -1 else
 int sendData(FILE* fp, short blockNumber, int sockfd, const struct sockaddr *dest_adrr, socklen_t addrLen) {
@@ -89,6 +139,7 @@ int sendError(short errorCode, char* errMsg, int sizeMsg) {
 //Checks if opcode and blocknumber are correct
 //If so, updates the buf to contain the data (only in DATA case)
 //on time out returns -3
+
 int receive_message(int s, char* buf, struct sockaddr_in* source, short opcode, short blockNumber) {
 	socklen_t fromlen = sizeof(struct sockaddr_in);
 	char bufRecive[518];
@@ -157,6 +208,8 @@ int handleFirstRequest(char* bufRecive) {
 
 	return 0;
 }
+
+
 
 
 int init_server() {
@@ -238,7 +291,7 @@ int main(int argc, char* argv[]) {
 		perror("init server");
 		return 0; //error- terminating program!
 	}
-	int blockNumber = 0;
+	blockNumber = 0;
 	struct stat statbuf;
 	char buf[512];
 	char fileName[100];
@@ -257,6 +310,7 @@ int main(int argc, char* argv[]) {
 		op = getOpCode(buf);
 
 		func = handle(op, buf, &source);
+
 		//func= -2 or -1 error
 		//else;
 		// if func tell us to read:
