@@ -252,6 +252,7 @@ int main(int argc, char* argv[]) {
 		//else;
 		// if func tell us to read:
 		sendData(file, blockNumber, sockfd, &source, sizeof(source));
+		
 		// and update block number if needed!
 		// if write- write
 		//...........
