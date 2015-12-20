@@ -241,13 +241,20 @@ int handleWriting(char* buf) {
 	char toWrite[518];
 	short op, block;
 	sscanf(buf, "%hd%hd%s", op, block, toWrite);
+	if (block != blockNumber + 1) {
+		//error
+	}
 	int len = strlen(toWrite);
 	int write = fwrite(toWrite, 1, len, file);
 	if (write != len) {
 		perror("write");
 		return -1;
 	}
-	return 0;
+	if (DEBUG) {
+		printf("Written %d\n", len);
+	}
+	blockNumber = block;
+	return toWrite;
 }
 
 int handleReading(char* buf) {
@@ -277,13 +284,18 @@ int handle(short op, char* buf, struct sockaddr_in* source) {
 		if (state == OPCODE_RRQ || state == -1)
 			return -2;
 		else { 
-			handleWriting(buf);
-			sendAck()
+			int writen=handleWriting(buf);
+			
+			sendAck(source);
+			if (writen < SIZE) {//DONE
+				return 1;
+			}
+			return 0;
 		}
 			//handle writing and send ack
 	}
 	else if (op == OPCODE_ACK) {
-		if (state == OPCODE_WRQ || state = -1)
+		if (state == OPCODE_WRQ || state == -1)
 			return -2;
 		else{
 			handleReading(buf);
@@ -322,11 +334,12 @@ int main(int argc, char* argv[]) {
 		op = getOpCode(buf);
 
 		func = handle(op, buf, &source);
-
+		if (func == 1)
+			clientSocket = 0;
 		//func= -2 or -1 error
 		//else;
 		// if func tell us to read:
-		sendData(file, blockNumber, sockfd, &source, sizeof(source));
+		//sendData(file, blockNumber, sockfd, &source, sizeof(source));
 		
 		// and update block number if needed!
 		// if write- write
