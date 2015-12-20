@@ -250,7 +250,7 @@ int handleWriting(char* buf) {
 	return 0;
 }
 
-int handleReading(char* buf,int blockNumber) {
+int handleReading(char* buf) {
 	sendData()
 }
 
@@ -286,7 +286,8 @@ int handle(short op, char* buf, struct sockaddr_in* source) {
 		if (state == OPCODE_WRQ || state = -1)
 			return -2;
 		else{
-			//handle reading
+			handleReading(buf);
+			sendData(source);
 		}
 			//
 	}
