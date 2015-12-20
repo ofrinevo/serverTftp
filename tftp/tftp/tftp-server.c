@@ -262,12 +262,17 @@ static int addrcmp(struct sockaddr_in* addr1, struct sockaddr_in* addr2){
 	return memcmp(addr1, addr2, sizeof(struct sockaddr_in));
 }
 
-int handleWriting(char* buf) {
+int handleWriting(char* buf, const struct sockaddr *dest_adrr) {
 	char toWrite[518];
 	uint16_t op, block;
 	sscanf(buf, "%hd%hd%s", op, block, toWrite);
-	if (block != blockNumber + 1) {
-		//error
+	if (block != blockNumber) {
+		if (block == blockNumber - 1) {
+			blockNumber--;
+			sendAck(dest_adrr);
+			blockNumber++;
+			return -2;
+		}
 	}
 	int len = strlen(toWrite);
 	int write = fwrite(toWrite, 1, len, file);
@@ -278,7 +283,7 @@ int handleWriting(char* buf) {
 	if (DEBUG) {
 		printf("Written %d\n", len);
 }
-	return toWrite;
+	return len;
 }
 
 int handleReading(char* buf) {
@@ -322,12 +327,15 @@ int handle(uint16_t op, char* buf, struct sockaddr_in* source) {
 		if (state == OPCODE_RRQ || state == -1)
 			return -2;
 		else { 
-			int writen=handleWriting(buf);
-			sendAck(source);
-			if (writen < SIZE) {//DONE
-				return 1;
+			
+			int writen=handleWriting(buf,source);
+			if (writen > 0) {
+				sendAck(source);
+				if (writen < SIZE) {//DONE
+					return 1;
+				}
+				blockNumber++;
 			}
-			blockNumber++;
 			return 0;
 		}
 			//handle writing and send ack
