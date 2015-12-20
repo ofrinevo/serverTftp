@@ -275,7 +275,6 @@ int handleWriting(char* buf) {
 	if (DEBUG) {
 		printf("Written %d\n", len);
 }
-	blockNumber = block;
 	return toWrite;
 }
 
@@ -326,6 +325,7 @@ int handle(short op, char* buf, struct sockaddr_in* source) {
 			if (writen < SIZE) {//DONE
 				return 1;
 			}
+			blockNumber++;
 			return 0;
 		}
 			//handle writing and send ack
