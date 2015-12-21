@@ -58,7 +58,7 @@
 #define FALSE 0
 #define DEBUG 1
 uint16_t state = -1;
-#define OP_CODE= sizeof(uint16_t);
+#define OP_CODE = sizeof(uint16_t);
 struct timeval timeout;
 struct sockaddr_in client;
 
@@ -161,7 +161,7 @@ int sendAck(const struct sockaddr *dest_adrr) {
 	return 0;
 }
 
-int sendError(uint16_t errorCode, char* errMsg, struct sockaddr_in* source) {
+int sendError(uint16_t errorCode, char* errMsg, const struct sockaddr_in* source) {
 	int sizeMsg = sizeof(errMsg);
 	char buf[200];
 	int len = 2 * sizeof(short) + sizeMsg + sizeof(short);
