@@ -338,7 +338,7 @@ int handleWriting(char* buf, const struct sockaddr *dest_adrr) {
 	return len;
 }
 
-int handleReading(char* buf) {
+int handleReading(char* buf, struct sockaddr_in* source) {
 	uint16_t op, block;
 	sscanf(buf, "%hd%hd", op, block);
 	
@@ -346,7 +346,7 @@ int handleReading(char* buf) {
 		//need to retransmit!
 	}
 	else
-		sendData(file, blockNumber, serverSocket, client, sizeof(client));
+		sendData(file, blockNumber, serverSocket, source, sizeof(source));
 	
 }
 
@@ -406,8 +406,9 @@ int handle(uint16_t op, char* buf, struct sockaddr_in* source) {
 			sendError(4, ERRDESC_UNEXPECTED_OPCODE_DURING_IDLE, source);
 			return -2;
 		}
-		else {}
-			//TODO..
+		else {
+			handleReading(buf, source);
+		}
 	}
 	else {/*can it be?*/}
 }
