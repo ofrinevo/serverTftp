@@ -134,6 +134,7 @@ int sendData(const struct sockaddr_in *dest_adrr) {
 		return -1;
 	}
 	char buf[SIZE + 4];
+	bzero(buf,SIZE+4);
 	printf("got here1\n");
 	short opcode = htons(OPCODE_DATA);
 	short blkTons = htons(blockNumber);
@@ -146,7 +147,7 @@ int sendData(const struct sockaddr_in *dest_adrr) {
 		perror("fread");
 		return -1;
 	}
-	sendto(clientSocket, &buf, SIZE + 4, 0, (struct sockaddr*)dest_adrr,
+	sendto(clientSocket, &buf, sizeRead + 4, 0, (struct sockaddr*)dest_adrr,
 		sizeof(struct sockaddr_in));
 	return sizeRead;
 }
@@ -493,7 +494,7 @@ int main(int argc, char* argv[]) {
 			continue;
 		}
 		blockNumber++;
-		bzero(buf, 512);
+		bzero(buf, 516);
 		//func= -2 or -1 error
 		//else;
 		// if func tell us to read:
