@@ -58,10 +58,12 @@
 #define TRUE 1
 #define FALSE 0
 #define DEBUG 1
+#define NAX_RETRANS 4
 short state = -1;
 #define OP_CODE = sizeof(short);
 struct timeval timeout;
 struct sockaddr_in client;
+int retransmitions = 0;
 
 #define OPCODE_RRQ 1
 #define OPCODE_WRQ 2
@@ -326,6 +328,7 @@ int handleWriting(char* buf, const struct sockaddr_in *dest_adrr) {
 	}
 
 	toWrite[i] = '\0';
+
 	if (block != blockNumber) {
 		if (block == blockNumber - 1) {
 			blockNumber--;
@@ -472,4 +475,31 @@ int main(int argc, char* argv[]) {
 		bzero(buf, SIZE + 4);
 	}
 	return 0;
+}
+
+
+/*operation: message to retransmit:
+		1=ACK	2= DATA*/
+int retransmit(int operation, struct sockaddr_in *dest_adrr)
+{
+	int status;
+	// if we didn't retransmit MAX_RETRANSMISSIONS times, transmit again!
+	// maybe the message got lost. otherwise - disconnect
+	if (retransmitions >= NAX_RETRANS)
+	{
+		// close the file, disconnect from client
+		status = close(file);
+		
+		state = -1;
+		return close_client() || status;
+	}
+	else
+	{
+		if (operation == 1)
+			sendAck(dest_adrr);
+		else if (operation == 2)
+			sendData(dest_adrr);
+		retransmitions++;
+		return status;
+	}
 }
