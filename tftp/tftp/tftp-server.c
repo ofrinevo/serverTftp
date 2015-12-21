@@ -196,11 +196,7 @@ int receive_message(int s, char buf[512], struct sockaddr_in* source) {
 	//char bufRecive[518];
 	//setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(struct timeval));
 	int received = recvfrom(s, buf, SIZE+4, 0, (struct sockaddr*)source, &fromlen);
-	if (DEBUG) {
-		int i;
-		for (i = 0; i < 512; i++)
-			printf("buf[%d+4] = %c\n", i, buf[i + 4]);
-	}
+	
 	/*if (received == -1) {
 		if (errno == EWOULDBLOCK || errno == EAGAIN) {
 			printf("return -3\n");
