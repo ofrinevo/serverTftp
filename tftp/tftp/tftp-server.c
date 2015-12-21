@@ -223,7 +223,7 @@ int file_error_message(const char* err_desc, struct sockaddr_in* source)
 
 int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
 	short opcode;
-	char* fileName;
+	char fileName[100];
 	struct stat fdata;
 	if (sscanf(bufRecive, "%hd0%s", &opcode, fileName) != 2) {
 		perror("sscanf");
@@ -290,9 +290,9 @@ int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
 
 
 int init_server() {
-	struct sockaddr_in myaddr, remaddr;
+	struct sockaddr_in myaddr;
 
-	socklen_t addrlen = sizeof(remaddr);
+	//socklen_t addrlen = sizeof(remaddr);
 	int sockfd;
 	if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
 		perror("Error creating socket\n");
@@ -353,6 +353,7 @@ int handleReading(char* buf, struct sockaddr_in* source) {
 	else
 		//sendData(file, blockNumber, serverSocket, source, sizeof(source));
 		sendData(source);
+	return 0;
 }
 
 /*return function that we need to use..
@@ -416,12 +417,14 @@ int handle(short op, char* buf, struct sockaddr_in* source) {
 		}
 	}
 	else {/*can it be?*/ }
+	printf("Why are we here?\n");
+	return -3;
 }
 
 
 int main(int argc, char* argv[]) {
 	//server loop:
-	int cntRead, cntWrite;
+	//int cntRead, cntWrite;
 	clientSocket = 0;
 	int sockfd = init_server();
 	if (sockfd < 0) {
@@ -429,15 +432,15 @@ int main(int argc, char* argv[]) {
 		return 0; //error- terminating program!
 	}
 	blockNumber = 0;
-	struct stat statbuf;
+	//struct stat statbuf;
 	char buf[512];
-	char fileName[100];
+	//char fileName[100];
 	short op;
 	struct sockaddr_in source;
 	int recv;
 	int func;
-	int errCode;
-	struct timeval time = { 3,0 };
+	//int errCode;
+	//struct timeval time = { 3,0 };
 
 	while (TRUE) {
 		recv = receive_message(clientSocket == 0 ? sockfd : clientSocket, buf, &source);
