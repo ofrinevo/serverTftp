@@ -54,7 +54,7 @@
 		"Internal server error."
 
 #define SIZE 512
-#define PORT 57983
+#define PORT 57981
 #define TRUE 1
 #define FALSE 0
 #define DEBUG 1
@@ -236,7 +236,7 @@ int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
 		perror("sscanf");
 		return -1;
 	}
-
+	printf("filename is: %s\n",fileName);
 	if (opcode == OPCODE_RRQ) {
 		
 		if (stat(fileName, &fdata) != 0) {
@@ -248,7 +248,7 @@ int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
 			//error not defined
 			return sendError(0, ERRDESC_RQ_FILE_IS_A_DIRECTORY, source);
 		}
-		file = fopen(fileName, O_RDONLY);
+		file = fopen(fileName, "r");
 		if (file == NULL) {
 			return file_error_message(ERRDESC_OPEN_FAILED, source);
 		}
@@ -262,7 +262,7 @@ int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
 	//	blockNumber = 1;
 		client = *source;
 
-		// send_data_message(source);
+		sendData(source);
 	}
 	else {
 		// check if the file already exists
@@ -292,7 +292,7 @@ int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
 		client = *source;
 
 		int sent= sendAck(source);
-		printf("%d\n", sent);
+		
 	}
 
 	return 0;
@@ -330,8 +330,9 @@ int handleWriting(char* buf, const struct sockaddr_in *dest_adrr) {
 	char toWrite[518];
 	short op, block;
 	
-	op = (buf[1]);
-	block = (buf[3]);
+	op = ntohs(((uint16_t*)buf)[0]);
+	
+	block = ntohs(((uint16_t*)buf)[1]);
 	printf("Recived op:%hd and block:%hd\n", op, block);
 	int i = 0;
 	while (buf[i + 4] != '\0' && i != 512) {
@@ -339,7 +340,7 @@ int handleWriting(char* buf, const struct sockaddr_in *dest_adrr) {
 		i++;
 	}
 
-	toWrite[i] = '0';
+	toWrite[i] = '\0';
 	if (block != blockNumber) {
 		if (block == blockNumber - 1) {
 			blockNumber--;
