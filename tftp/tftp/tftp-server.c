@@ -54,7 +54,7 @@
 		"Internal server error."
 
 #define SIZE 512
-#define PORT 6900
+#define PORT 57982
 #define TRUE 1
 #define FALSE 0
 #define DEBUG 1
@@ -202,9 +202,12 @@ int receive_message(int s, char* buf, struct sockaddr_in* source) {
 
 short getOpCode(char* buf) {
 	short op;
+	printf("%hd\n", buf[1]);
 	if (sscanf(buf, "%hd", &op) < 0) {
+		printf("%hd\n", op);
+		printf("sec\n");
 		perror("sscanf");
-		return -1;;
+		return -1;
 	}
 	return op;
 }
@@ -226,6 +229,7 @@ int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
 	char fileName[100];
 	struct stat fdata;
 	if (sscanf(bufRecive, "%hd0%s", &opcode, fileName) != 2) {
+		printf("first\n");
 		perror("sscanf");
 		return -1;
 	}
