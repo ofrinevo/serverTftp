@@ -100,7 +100,7 @@ int init_client()
 	servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	servaddr.sin_port = htons(0);
 
-	
+
 	if (bind(new_socket, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
 	{
 		printf("Error: bind() failed: %s\n", strerror(errno));
@@ -164,12 +164,12 @@ int sendAck(const struct sockaddr_in *dest_adrr) {
 	return 0;
 }
 
-int sendError(short errorCode,const char* errMsg, const struct sockaddr_in* source) {
+int sendError(short errorCode, const char* errMsg, const struct sockaddr_in* source) {
 	int sizeMsg = sizeof(errMsg);
 	char buf[200];
 	int len = 2 * sizeof(short) + sizeMsg + sizeof(short);
 	short op = OPCODE_ERROR;
-	if (sprintf(buf, "%hd%hd%s0", op,errorCode, errMsg) < 0) {
+	if (sprintf(buf, "%hd%hd%s0", op, errorCode, errMsg) < 0) {
 		perror("sprintf");
 		return -1;
 	}
@@ -213,11 +213,11 @@ short getOpCode(char* buf) {
 int file_error_message(const char* err_desc, struct sockaddr_in* source)
 {
 	if (errno == EACCES)
-		sendError(2, ERRDESC_RRQ_ACCESS_VIOLATION,source);
+		sendError(2, ERRDESC_RRQ_ACCESS_VIOLATION, source);
 	else if (errno == EDQUOT || errno == ENOSPC)
-		sendError(3, ERRDESC_ALLOC_EXCEEDED,source);
+		sendError(3, ERRDESC_ALLOC_EXCEEDED, source);
 	else
-		sendError(0, err_desc,source);
+		sendError(0, err_desc, source);
 	return 0;
 }
 
@@ -232,17 +232,17 @@ int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
 	if (opcode == OPCODE_RRQ) {
 		if (stat(fileName, &fdata) != 0) {
 			if (errno == ENOENT || errno == ENOTDIR) {
-				return sendError(1, ERRDESC_RQ_FILE_NOT_FOUND,source);
+				return sendError(1, ERRDESC_RQ_FILE_NOT_FOUND, source);
 			}
 		}
 		if (S_ISDIR(fdata.st_mode)) {
 			//error not defined
-			return sendError(0, ERRDESC_RQ_FILE_IS_A_DIRECTORY,source);
+			return sendError(0, ERRDESC_RQ_FILE_IS_A_DIRECTORY, source);
 		}
 		file = fopen(fileName, O_RDONLY);
 		if (file == NULL) {
-			return file_error_message(ERRDESC_OPEN_FAILED,source);
-	}
+			return file_error_message(ERRDESC_OPEN_FAILED, source);
+		}
 		// open a new client socket
 		if (init_client()) {
 			fclose(file);
@@ -258,22 +258,22 @@ int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
 	else {
 		// check if the file already exists
 		if (stat(fileName, &fdata) == 0) {
-			return sendError(6, ERRDESC_WRQ_FILE_ALREADY_EXISTS,source);
+			return sendError(6, ERRDESC_WRQ_FILE_ALREADY_EXISTS, source);
 		}
 		// ENOENT means there is no file, otherwise there is a problem
 		if (errno != ENOENT) {
-			return file_error_message(ERRDESC_STAT_FAILED,source);
+			return file_error_message(ERRDESC_STAT_FAILED, source);
 		}
 
 		// open the file
 		file = fopen(fileName, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-		if (file == -1) {
-			return file_error_message(ERRDESC_WRQ_UNABLE_TO_CREATE_FILE,source);
+		if (file == NULL) {
+			return file_error_message(ERRDESC_WRQ_UNABLE_TO_CREATE_FILE, source);
 		}
 		// open a new client socket
 		if (init_client()) {
 			fclose(file);
-			return sendError(0, ERRDESC_INTERNAL_ERROR,source);
+			return sendError(0, ERRDESC_INTERNAL_ERROR, source);
 		}
 
 		state = OPCODE_WRQ;
@@ -334,14 +334,14 @@ int handleWriting(char* buf, const struct sockaddr_in *dest_adrr) {
 	}
 	if (DEBUG) {
 		printf("Written %d\n", len);
-}
+	}
 	return len;
 }
 
 int handleReading(char* buf, struct sockaddr_in* source) {
 	short op, block;
 	sscanf(buf, "%hd%hd", &op, &block);
-	
+
 	if (blockNumber != block + 1) {
 		//need to retransmit!
 	}
@@ -359,7 +359,7 @@ int handle(short op, char* buf, struct sockaddr_in* source) {
 	if (op == OPCODE_RRQ || op == OPCODE_WRQ) {
 		if (state != -1) {
 			if (state == OPCODE_RRQ)
-				return sendError(4, ERRDESC_UNEXPECTED_OPCODE_DURING_READ_IN_PROGRESS,source);
+				return sendError(4, ERRDESC_UNEXPECTED_OPCODE_DURING_READ_IN_PROGRESS, source);
 			else
 				return sendError(4, ERRDESC_UNEXPECTED_OPCODE_DURING_WRITE_IN_PROGRESS, source);
 			return -2;
@@ -379,25 +379,25 @@ int handle(short op, char* buf, struct sockaddr_in* source) {
 			sendError(4, ERRDESC_UNEXPECTED_OPCODE_DURING_READ_IN_PROGRESS, source);
 			return -2;
 		}
-		else if (state == -1){
+		else if (state == -1) {
 			sendError(4, ERRDESC_UNEXPECTED_OPCODE_DURING_IDLE, source);
 			return -2;
 		}
-		else { 
-			
+		else {
+
 			int writen = handleWriting(buf, source);
 			if (writen > 0) {
-			sendAck(source);
-			if (writen < SIZE) {//DONE
-				return 1;
-			}
+				sendAck(source);
+				if (writen < SIZE) {//DONE
+					return 1;
+				}
 				blockNumber++;
 			}
 			return 0;
 		}
-			//handle writing and send ack
+		//handle writing and send ack
 	}
-	else if (op == OPCODE_ACK ) {
+	else if (op == OPCODE_ACK) {
 		if (state == OPCODE_WRQ) {
 			sendError(4, ERRDESC_UNEXPECTED_OPCODE_DURING_WRITE_IN_PROGRESS, source);
 			return -2;
@@ -410,7 +410,7 @@ int handle(short op, char* buf, struct sockaddr_in* source) {
 			handleReading(buf, source);
 		}
 	}
-	else {/*can it be?*/}
+	else {/*can it be?*/ }
 }
 
 
@@ -448,7 +448,7 @@ int main(int argc, char* argv[]) {
 		//else;
 		// if func tell us to read:
 		//sendData(file, blockNumber, sockfd, &source, sizeof(source));
-		
+
 		// and update block number if needed!
 		// if write- write
 		//...........
