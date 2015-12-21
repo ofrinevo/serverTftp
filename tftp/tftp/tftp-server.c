@@ -172,7 +172,6 @@ int sendError(short errorCode, const char* errMsg, const struct sockaddr_in* sou
 	int i = 0;
 	while (errMsg[i] != '\0') {
 		buf[i + 4] = errMsg[i];
-		printf("%c\n", errMsg[i]);
 		i++;
 	}
 	buf[i + 4] = '\0';
@@ -490,29 +489,29 @@ int main(int argc, char* argv[]) {
 	return 0;
 }
 
-
-/*operation: message to retransmit:
-		1=ACK	2= DATA*/
-int retransmit(int operation, struct sockaddr_in *dest_adrr)
-{
-	int status;
-	// if we didn't retransmit MAX_RETRANSMISSIONS times, transmit again!
-	// maybe the message got lost. otherwise - disconnect
-	if (retransmitions >= NAX_RETRANS)
-	{
-		// close the file, disconnect from client
-		status = close(file);
-		
-		state = -1;
-		return close_client() || status;
-	}
-	else
-	{
-		if (operation == 1)
-			sendAck(dest_adrr);
-		else if (operation == 2)
-			sendData(dest_adrr);
-		retransmitions++;
-		return status;
-	}
-}
+//
+///*operation: message to retransmit:
+//		1=ACK	2= DATA*/
+//int retransmit(int operation, struct sockaddr_in *dest_adrr)
+//{
+//	int status;
+//	// if we didn't retransmit MAX_RETRANSMISSIONS times, transmit again!
+//	// maybe the message got lost. otherwise - disconnect
+//	if (retransmitions >= NAX_RETRANS)
+//	{
+//		// close the file, disconnect from client
+//		status = close(file);
+//		
+//		state = -1;
+//		return close_client() || status;
+//	}
+//	else
+//	{
+//		if (operation == 1)
+//			sendAck(dest_adrr);
+//		else if (operation == 2)
+//			sendData(dest_adrr);
+//		retransmitions++;
+//		return status;
+//	}
+//}
