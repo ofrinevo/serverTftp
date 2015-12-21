@@ -16,6 +16,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <stdint.h>
+#include <sys/stat.h>
 
 #define ERRDESC_UNKNOWN_TID \
 	"Unknown transfer ID."
@@ -57,8 +58,8 @@
 #define TRUE 1
 #define FALSE 0
 #define DEBUG 1
-uint16_t state = -1;
-#define OP_CODE = sizeof(uint16_t);
+short state = -1;
+#define OP_CODE = sizeof(short);
 struct timeval timeout;
 struct sockaddr_in client;
 
@@ -76,7 +77,7 @@ int serverSocket;
 FILE* file = NULL;
 
 typedef struct readSize {
-	uint16_t blockNumber;
+	short blockNumber;
 	int sizeRead;
 } readSize;
 
@@ -132,8 +133,8 @@ int sendData(const struct sockaddr *dest_adrr) {
 		return -1;
 	}
 	char buf[SIZE + 4];
-	uint16_t opcode = htons(OPCODE_DATA);
-	uint16_t blkTons = htons(blockNumber);
+	short opcode = htons(OPCODE_DATA);
+	short blkTons = htons(blockNumber);
 	if (sprintf(buf, "%hd%hd", opcode, blkTons)) {
 		perror("sprintf");
 		return -1;
@@ -151,8 +152,8 @@ int sendData(const struct sockaddr *dest_adrr) {
 //returns 0 on success, -1 else
 int sendAck(const struct sockaddr *dest_adrr) {
 	char buf[4];
-	uint16_t opcode = htons(OPCODE_DATA);
-	uint16_t blkTons = htons(blockNumber);
+	short opcode = htons(OPCODE_DATA);
+	short blkTons = htons(blockNumber);
 	if (sprintf(buf, "%hd%hd", opcode, blkTons) < 0) {
 		perror("sprintf");
 		return -1;
@@ -161,7 +162,7 @@ int sendAck(const struct sockaddr *dest_adrr) {
 	return 0;
 }
 
-int sendError(uint16_t errorCode, char* errMsg, const struct sockaddr_in* source) {
+int sendError(short errorCode,const char* errMsg, const struct sockaddr_in* source) {
 	int sizeMsg = sizeof(errMsg);
 	char buf[200];
 	int len = 2 * sizeof(short) + sizeMsg + sizeof(short);
@@ -180,7 +181,7 @@ int sendError(uint16_t errorCode, char* errMsg, const struct sockaddr_in* source
 //If so, updates the buf to contain the data (only in DATA case)
 //on time out returns -3
 
-int receive_message(int s, char* buf, struct sockaddr_in* source, uint16_t opcode, uint16_t blockNumber) {
+int receive_message(int s, char* buf, struct sockaddr_in* source, short opcode, short blockNumber) {
 	socklen_t fromlen = sizeof(struct sockaddr_in);
 	char bufRecive[518];
 	setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(struct timeval));
@@ -191,8 +192,8 @@ int receive_message(int s, char* buf, struct sockaddr_in* source, uint16_t opcod
 		else
 			return -1;
 	}
-	uint16_t currBlockNum, currOpCode;
-	sscanf(bufRecive, "%hd%hd%s", currOpCode, currBlockNum, buf);
+	short currBlockNum, currOpCode;
+	sscanf(bufRecive, "%hd%hd%s", &currOpCode, &currBlockNum, buf);
 	if (currBlockNum != blockNumber)
 		return -2;
 	if (currOpCode != opcode)
@@ -200,9 +201,9 @@ int receive_message(int s, char* buf, struct sockaddr_in* source, uint16_t opcod
 	return received;
 }
 
-uint16_t getOpCode(char* buf) {
-	uint16_t op;
-	if (sscanf(buf, "%hd", op) < 0) {
+short getOpCode(char* buf) {
+	short op;
+	if (sscanf(buf, "%hd", &op) < 0) {
 		perror("sscanf");
 		return -1;;
 	}
@@ -222,10 +223,10 @@ int file_error_message(const char* err_desc, struct sockaddr_in* source)
 }
 
 int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
-	uint16_t opcode;
+	short opcode;
 	char* fileName;
 	struct stat fdata;
-	if (sscanf(bufRecive, "%hd0%s", opcode, fileName) != 2) {
+	if (sscanf(bufRecive, "%hd0%s", &opcode, fileName) != 2) {
 		perror("sscanf");
 		return -1;
 	}
@@ -316,7 +317,7 @@ static int addrcmp(struct sockaddr_in* addr1, struct sockaddr_in* addr2) {
 
 int handleWriting(char* buf, const struct sockaddr *dest_adrr) {
 	char toWrite[518];
-	uint16_t op, block;
+	short op, block;
 	sscanf(buf, "%hd%hd%s", op, block, toWrite);
 	if (block != blockNumber) {
 		if (block == blockNumber - 1) {
@@ -339,7 +340,7 @@ int handleWriting(char* buf, const struct sockaddr *dest_adrr) {
 }
 
 int handleReading(char* buf) {
-	uint16_t op, block;
+	short op, block;
 	sscanf(buf, "%hd%hd", op, block);
 	
 	if (blockNumber != block+1 ) {
@@ -352,7 +353,7 @@ int handleReading(char* buf) {
 
 /*return function that we need to use..
 	return values- think about this later..*/
-int handle(uint16_t op, char* buf, struct sockaddr_in* source) {
+int handle(short op, char* buf, struct sockaddr_in* source) {
 	if (clientSocket != 0 && addrcmp(source, &clientSocket)) {
 		return sendError(5, ERRDESC_UNKNOWN_TID, source);
 	}
@@ -426,7 +427,7 @@ int main(int argc, char* argv[]) {
 	struct stat statbuf;
 	char buf[512];
 	char fileName[100];
-	uint16_t op;
+	short op;
 	struct sockaddr_in source;
 	int recv;
 	int func;
