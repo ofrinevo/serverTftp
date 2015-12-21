@@ -178,7 +178,7 @@ int sendError(short errorCode, const char* errMsg, const struct sockaddr_in* sou
 	buf[i + 4] = '\0';
 	buf[i + 5] = '0';
 	buf[i + 6] = EOF;
-	sendto(clientSocket, &buf, 200, 0, (struct sockaddr*)source,
+	sendto(clientSocket==0 ? serverSocket : clientSocket, &buf, 200, 0, (struct sockaddr*)source,
 		sizeof(struct sockaddr_in));
 	return 0;
 }
@@ -315,6 +315,7 @@ int init_server() {
 		close(sockfd);
 		return -1;
 	}
+	serverSocket = sockfd;
 	return sockfd;
 }
 
