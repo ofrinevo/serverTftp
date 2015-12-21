@@ -106,12 +106,13 @@ int init_client()
 		printf("Error: bind() failed: %s\n", strerror(errno));
 		return -1;
 	}
-	if (setsockopt(new_socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
+	/*if (setsockopt(new_socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
 		printf("Error: setsockopt() failed: %s\n", strerror(errno));
 		return -1;
-	}
+	}*/
 
 	clientSocket = new_socket;
+	printf("c_socket:%d\n", clientSocket);
 	return 0;
 }
 
