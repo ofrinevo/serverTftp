@@ -188,7 +188,7 @@ int sendError(short errorCode, const char* errMsg, const struct sockaddr_in* sou
 int receive_message(int s, char* buf, struct sockaddr_in* source) {
 	socklen_t fromlen = sizeof(struct sockaddr_in);
 	char bufRecive[518];
-	setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(struct timeval));
+	//setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(struct timeval));
 	int received = recvfrom(s, buf, SIZE, 0, (struct sockaddr*)source, &fromlen);
 	if (received == -1) {
 		if (errno == EWOULDBLOCK || errno == EAGAIN) {
