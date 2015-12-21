@@ -196,6 +196,11 @@ int receive_message(int s, char buf[512], struct sockaddr_in* source) {
 	//char bufRecive[518];
 	//setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(struct timeval));
 	int received = recvfrom(s, buf, SIZE+4, 0, (struct sockaddr*)source, &fromlen);
+	if (DEBUG) {
+		int i;
+		for (i = 0; i < 512; i++)
+			printf("buf[%d+4] = %c\n", i, buf[i + 4]);
+	}
 	/*if (received == -1) {
 		if (errno == EWOULDBLOCK || errno == EAGAIN) {
 			printf("return -3\n");
@@ -336,6 +341,7 @@ int handleWriting(char* buf, const struct sockaddr_in *dest_adrr) {
 	printf("Recived op:%hd and block:%hd\n", op, block);
 	int i = 0;
 	while (buf[i + 4] != '\0' && i != 512) {
+		
 		toWrite[i] = buf[i + 4];
 		i++;
 	}
@@ -491,6 +497,7 @@ int main(int argc, char* argv[]) {
 			continue;
 		}
 		blockNumber++;
+		bzero(buf, 512);
 		//func= -2 or -1 error
 		//else;
 		// if func tell us to read:
