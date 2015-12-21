@@ -245,7 +245,7 @@ int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
 		if (init_client()) {
 			fclose(file);
 			sendError(0, ERRDESC_INTERNAL_ERROR, source);
-
+			return -4;
 
 		}
 		state = OPCODE_RRQ;
