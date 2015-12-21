@@ -237,12 +237,12 @@ int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
 			return sendError(0, ERRDESC_RQ_FILE_IS_A_DIRECTORY,source);
 		}
 		file = fopen(fileName, O_RDONLY);
-		if (file == -1) {
+		if (file == NULL) {
 			return file_error_message(ERRDESC_OPEN_FAILED,source);
 	}
 		// open a new client socket
 		if (init_client()) {
-			close(file);
+			fclose(file);
 			return sendError(0, ERRDESC_INTERNAL_ERROR, source);
 			// send_error_message(source, ERROR_NOT_DEFINED, ERRDESC_INTERNAL_ERROR);
 		}
@@ -263,13 +263,13 @@ int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
 		}
 
 		// open the file
-		file = open(g_path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+		file = fopen(fileName, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 		if (file == -1) {
 			return file_error_message(ERRDESC_WRQ_UNABLE_TO_CREATE_FILE,source);
 		}
 		// open a new client socket
 		if (init_client()) {
-			close(file);
+			fclose(file);
 			return sendError(0, ERRDESC_INTERNAL_ERROR,source);
 		}
 
@@ -297,7 +297,7 @@ int init_server() {
 	}
 	memset((char*)&myaddr, 0, sizeof(myaddr));
 	myaddr.sin_family = AF_INET;
-	myaddr.sin_addr.s_addr = htonl(INADDR_MY);
+	myaddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	myaddr.sin_port = htons(PORT);
 	if (bind(sockfd, (struct sockaddr *)&myaddr, sizeof(myaddr)) < 0) {
 		perror("Error binding\n");
@@ -314,7 +314,7 @@ static int addrcmp(struct sockaddr_in* addr1, struct sockaddr_in* addr2) {
 int handleWriting(char* buf, const struct sockaddr_in *dest_adrr) {
 	char toWrite[518];
 	short op, block;
-	sscanf(buf, "%hd%hd%s", op, block, toWrite);
+	sscanf(buf, "%hd%hd%s", &op, &block, toWrite);
 	if (block != blockNumber) {
 		if (block == blockNumber - 1) {
 			blockNumber--;
@@ -337,7 +337,7 @@ int handleWriting(char* buf, const struct sockaddr_in *dest_adrr) {
 
 int handleReading(char* buf, struct sockaddr_in* source) {
 	short op, block;
-	sscanf(buf, "%hd%hd", op, block);
+	sscanf(buf, "%hd%hd", &op, &block);
 	
 	if (blockNumber != block + 1) {
 		//need to retransmit!
