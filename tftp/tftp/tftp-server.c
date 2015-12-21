@@ -166,20 +166,19 @@ int sendAck(const struct sockaddr_in *dest_adrr) {
 int sendError(short errorCode, const char* errMsg, const struct sockaddr_in* source) {
 	//int sizeMsg = sizeof(errMsg);
 	char buf[200];
-
-	short op = htons(OPCODE_ERROR);
-	short err = htons(errorCode);
-	((uint16_t*)buf)[0] = op;
-	((uint16_t*)buf)[1] = err;
+	bzero(buf, 200);
+	((uint16_t*)buf)[0] = htons(OPCODE_ERROR);
+	((uint16_t*)buf)[1] = htons(errorCode);
 	int i = 0;
 	while (errMsg[i] != '\0') {
 		buf[i + 4] = errMsg[i];
+		printf("%c\n", errMsg[i]);
 		i++;
 	}
-	buf[i + 4] = '0';
-	int len = i + 4;
-
-	sendto(clientSocket, &buf, len, 0, (struct sockaddr*)source,
+	buf[i + 4] = '\0';
+	buf[i + 5] = '0';
+	buf[i + 6] = EOF;
+	sendto(clientSocket, &buf, 200, 0, (struct sockaddr*)source,
 		sizeof(struct sockaddr_in));
 	return 0;
 }
@@ -230,22 +229,26 @@ int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
 
 		if (stat(fileName, &fdata) != 0) {
 			if (errno == ENOENT || errno == ENOTDIR) {
-				return sendError(1, ERRDESC_RQ_FILE_NOT_FOUND, source);
+				sendError(1, ERRDESC_RQ_FILE_NOT_FOUND, source);
+				return -4;
 			}
 		}
 		if (S_ISDIR(fdata.st_mode)) {
 			//error not defined
-			return sendError(0, ERRDESC_RQ_FILE_IS_A_DIRECTORY, source);
+			sendError(0, ERRDESC_RQ_FILE_IS_A_DIRECTORY, source);
+			return -4;
 		}
 		file = fopen(fileName, "r");
 		if (file == NULL) {
-			return file_error_message(ERRDESC_OPEN_FAILED, source);
+			file_error_message(ERRDESC_OPEN_FAILED, source);
+			return -4;
 		}
 		// open a new client socket
 		if (init_client()) {
 			fclose(file);
-			return sendError(0, ERRDESC_INTERNAL_ERROR, source);
-			// send_error_message(source, ERROR_NOT_DEFINED, ERRDESC_INTERNAL_ERROR);
+			sendError(0, ERRDESC_INTERNAL_ERROR, source);
+			return -4;
+
 		}
 		state = OPCODE_RRQ;
 		blockNumber = 1;
@@ -256,24 +259,28 @@ int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
 	else {
 		// check if the file already exists
 		if (stat(fileName, &fdata) == 0) {
-			return sendError(6, ERRDESC_WRQ_FILE_ALREADY_EXISTS, source);
+			sendError(6, ERRDESC_WRQ_FILE_ALREADY_EXISTS, source);
+			return -4;
 		}
 		// ENOENT means there is no file, otherwise there is a problem
 
 		if (errno != ENOENT) {
-			return file_error_message(ERRDESC_STAT_FAILED, source);
+			file_error_message(ERRDESC_STAT_FAILED, source);
+			return -4;
 		}
 
 		// open the file
 		file = fopen(fileName, "w");
 		if (file == NULL) {
-			return file_error_message(ERRDESC_WRQ_UNABLE_TO_CREATE_FILE, source);
+			file_error_message(ERRDESC_WRQ_UNABLE_TO_CREATE_FILE, source);
+			return -4;
 		}
 
 		// open a new client socket
 		if (init_client()) {
 			fclose(file);
-			return sendError(0, ERRDESC_INTERNAL_ERROR, source);
+			sendError(0, ERRDESC_INTERNAL_ERROR, source);
+			return -4;
 		}
 
 		state = OPCODE_WRQ;
@@ -467,6 +474,11 @@ int main(int argc, char* argv[]) {
 			state = -1;
 			close_client();
 			fclose(file);
+			blockNumber = 0;
+			continue;
+		}
+		if (func == -4) {
+			state = -1;
 			blockNumber = 0;
 			continue;
 		}
