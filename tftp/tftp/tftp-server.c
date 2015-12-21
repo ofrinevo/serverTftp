@@ -127,7 +127,7 @@ int close_client() {
 }
 
 //return num of bytes read from the file on success, -1 else
-int sendData(const struct sockaddr *dest_adrr) {
+int sendData(const struct sockaddr_in *dest_adrr) {
 	if (fseek(file, blockNumber*SIZE, SEEK_SET)) {
 		perror("fseek");
 		return -1;
@@ -150,7 +150,7 @@ int sendData(const struct sockaddr *dest_adrr) {
 }
 
 //returns 0 on success, -1 else
-int sendAck(const struct sockaddr *dest_adrr) {
+int sendAck(const struct sockaddr_in *dest_adrr) {
 	char buf[4];
 	short opcode = htons(OPCODE_DATA);
 	short blkTons = htons(blockNumber);
@@ -181,7 +181,7 @@ int sendError(short errorCode,const char* errMsg, const struct sockaddr_in* sour
 //If so, updates the buf to contain the data (only in DATA case)
 //on time out returns -3
 
-int receive_message(int s, char* buf, struct sockaddr_in* source, short opcode, short blockNumber) {
+int receive_message(int s, char* buf, struct sockaddr_in* source) {
 	socklen_t fromlen = sizeof(struct sockaddr_in);
 	char bufRecive[518];
 	setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(struct timeval));
@@ -194,10 +194,6 @@ int receive_message(int s, char* buf, struct sockaddr_in* source, short opcode, 
 	}
 	short currBlockNum, currOpCode;
 	sscanf(bufRecive, "%hd%hd%s", &currOpCode, &currBlockNum, buf);
-	if (currBlockNum != blockNumber)
-		return -2;
-	if (currOpCode != opcode)
-		return -2;
 	return received;
 }
 
@@ -315,7 +311,7 @@ static int addrcmp(struct sockaddr_in* addr1, struct sockaddr_in* addr2) {
 	return memcmp(addr1, addr2, sizeof(struct sockaddr_in));
 }
 
-int handleWriting(char* buf, const struct sockaddr *dest_adrr) {
+int handleWriting(char* buf, const struct sockaddr_in *dest_adrr) {
 	char toWrite[518];
 	short op, block;
 	sscanf(buf, "%hd%hd%s", op, block, toWrite);
@@ -339,22 +335,22 @@ int handleWriting(char* buf, const struct sockaddr *dest_adrr) {
 	return len;
 }
 
-int handleReading(char* buf) {
+int handleReading(char* buf, struct sockaddr_in* source) {
 	short op, block;
 	sscanf(buf, "%hd%hd", op, block);
 	
-	if (blockNumber != block+1 ) {
+	if (blockNumber != block + 1) {
 		//need to retransmit!
 	}
 	else
-		sendData(file, blockNumber, serverSocket, client, sizeof(client));
-	
+		//sendData(file, blockNumber, serverSocket, source, sizeof(source));
+		sendData(source);
 }
 
 /*return function that we need to use..
 	return values- think about this later..*/
 int handle(short op, char* buf, struct sockaddr_in* source) {
-	if (clientSocket != 0 && addrcmp(source, &clientSocket)) {
+	if (clientSocket != 0 && addrcmp(source, &client)) {
 		return sendError(5, ERRDESC_UNKNOWN_TID, source);
 	}
 	if (op == OPCODE_RRQ || op == OPCODE_WRQ) {
@@ -407,8 +403,9 @@ int handle(short op, char* buf, struct sockaddr_in* source) {
 			sendError(4, ERRDESC_UNEXPECTED_OPCODE_DURING_IDLE, source);
 			return -2;
 		}
-		else {}
-			//TODO..
+		else {
+			handleReading(buf, source);
+		}
 	}
 	else {/*can it be?*/}
 }
@@ -435,7 +432,7 @@ int main(int argc, char* argv[]) {
 	struct timeval time = { 3,0 };
 
 	while (TRUE) {
-		recv = receive_message(clientSocket == 0 ? sockfd : clientSocket, buf, &source, );
+		recv = receive_message(clientSocket == 0 ? sockfd : clientSocket, buf, &source);
 		if (recv < 0) {
 			//handle..
 		}
