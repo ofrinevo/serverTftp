@@ -94,7 +94,7 @@ int init_client()
 		printf("Error: socket() failed: %s\n", strerror(errno));
 		return -1;
 	}
-
+	printf("Now i'm here\n");
 	bzero(&servaddr, sizeof(servaddr));
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -112,7 +112,7 @@ int init_client()
 	}
 
 	clientSocket = new_socket;
-	return 1;
+	return 0;
 }
 
 
@@ -153,14 +153,15 @@ int sendData(const struct sockaddr_in *dest_adrr) {
 //returns 0 on success, -1 else
 int sendAck(const struct sockaddr_in *dest_adrr) {
 	char buf[4];
-	short opcode = htons(OPCODE_DATA);
+	short opcode = htons(OPCODE_ACK);
 	short blkTons = htons(blockNumber);
 	if (sprintf(buf, "%hd%hd", opcode, blkTons) < 0) {
 		perror("sprintf");
 		return -1;
 	}
-	sendto(clientSocket, buf, 4, 0, (struct sockaddr*)dest_adrr,
-		sizeof(struct sockaddr_in));
+
+	sendto(clientSocket, buf, 4, 0, (struct sockaddr*)dest_adrr, sizeof(struct sockaddr_in));
+
 	return 0;
 }
 
@@ -190,25 +191,28 @@ int receive_message(int s, char* buf, struct sockaddr_in* source) {
 	setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(struct timeval));
 	int received = recvfrom(s, buf, SIZE, 0, (struct sockaddr*)source, &fromlen);
 	if (received == -1) {
-		if (errno == EWOULDBLOCK || errno == EAGAIN)
+		if (errno == EWOULDBLOCK || errno == EAGAIN) {
+			printf("return -3\n");
 			return -3;
+		}
 		else
 			return -1;
 	}
-	short currBlockNum, currOpCode;
-	sscanf(bufRecive, "%hd%hd%s", &currOpCode, &currBlockNum, buf);
+	/*short currBlockNum, currOpCode;
+	sscanf(bufRecive, "%hd%hd%s", &currOpCode, &currBlockNum, buf);*/
 	return received;
 }
 
 short getOpCode(char* buf) {
 	short op;
-	printf("%hd\n", buf[1]);
-	if (sscanf(buf, "%hd", &op) < 0) {
+	//printf("%hd\n", buf[1]);
+	/*if (sscanf(buf, "%hd", &op) < 0) {
 		printf("%hd\n", op);
 		printf("sec\n");
 		perror("sscanf");
 		return -1;
-	}
+	}*/
+	op = buf[1];
 	return op;
 }
 
@@ -228,11 +232,15 @@ int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
 	short opcode;
 	char fileName[100];
 	struct stat fdata;
-	if (sscanf(bufRecive, "%hd0%s", &opcode, fileName) != 2) {
+
+	opcode = bufRecive[1];
+
+	if (sscanf(bufRecive + 2, "%s", fileName) < 0) {
 		printf("first\n");
 		perror("sscanf");
 		return -1;
 	}
+
 	if (opcode == OPCODE_RRQ) {
 		if (stat(fileName, &fdata) != 0) {
 			if (errno == ENOENT || errno == ENOTDIR) {
@@ -265,6 +273,7 @@ int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
 			return sendError(6, ERRDESC_WRQ_FILE_ALREADY_EXISTS, source);
 		}
 		// ENOENT means there is no file, otherwise there is a problem
+
 		if (errno != ENOENT) {
 			return file_error_message(ERRDESC_STAT_FAILED, source);
 		}
@@ -274,6 +283,7 @@ int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
 		if (file == NULL) {
 			return file_error_message(ERRDESC_WRQ_UNABLE_TO_CREATE_FILE, source);
 		}
+
 		// open a new client socket
 		if (init_client()) {
 			fclose(file);
@@ -284,7 +294,7 @@ int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
 		blockNumber = 0;
 		client = *source;
 
-		// send_ack_message(source);
+		sendAck(source);
 	}
 
 	return 0;
@@ -418,10 +428,11 @@ int handle(short op, char* buf, struct sockaddr_in* source) {
 		}
 		else {
 			handleReading(buf, source);
+			return 0;
 		}
 	}
-	else {/*can it be?*/ }
-	printf("Why are we here?\n");
+	else { printf("Why are we here?\n"); }
+
 	return -3;
 }
 
@@ -435,6 +446,8 @@ int main(int argc, char* argv[]) {
 		perror("init server");
 		return 0; //error- terminating program!
 	}
+	timeout.tv_sec = 3;
+	timeout.tv_usec = 0;
 	blockNumber = 0;
 	//struct stat statbuf;
 	char buf[512];
@@ -447,10 +460,12 @@ int main(int argc, char* argv[]) {
 	//struct timeval time = { 3,0 };
 
 	while (TRUE) {
+
 		recv = receive_message(clientSocket == 0 ? sockfd : clientSocket, buf, &source);
 		if (recv < 0) {
-			//handle..
+			printf("error here\n");
 		}
+
 		op = getOpCode(buf);
 
 		func = handle(op, buf, &source);
