@@ -374,6 +374,7 @@ int handleReading(char* buf, struct sockaddr_in* source) {
 	return values- think about this later..*/
 int handle(short op, char* buf, struct sockaddr_in* source) {
 	if (clientSocket != 0 && addrcmp(source, &client)) {
+		printf("Inside the if\n");
 		return sendError(5, ERRDESC_UNKNOWN_TID, source);
 	}
 	if (op == OPCODE_RRQ || op == OPCODE_WRQ) {
