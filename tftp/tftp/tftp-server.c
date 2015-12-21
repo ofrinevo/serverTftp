@@ -15,14 +15,15 @@
 #include <err.h>
 #include <time.h>
 #include <sys/time.h>
+#include <stdint.h>
 
 #define SIZE 512
 #define PORT 69
 #define TRUE 1
 #define FALSE 0
 #define DEBUG 1
-short state = -1;
-#define OP_CODE= sizeof(short);
+uint16_t state = -1;
+#define OP_CODE= sizeof(uint16_t);
 struct timeval timeout;
 struct sockaddr_in client;
 
@@ -38,7 +39,7 @@ int serverSocket;
 FILE* file = NULL;
 
 typedef struct readSize {
-	short blockNumber;
+	uint16_t blockNumber;
 	int sizeRead;
 } readSize;
 
@@ -62,7 +63,7 @@ int init_client()
 	servaddr.sin_port = htons(0);
 
 	
-	if (bind(new_socket, (struct sockaddr *)&servaddr, sizeof(servaddr))<0)
+	if (bind(new_socket, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
 	{
 		printf("Error: bind() failed: %s\n", strerror(errno));
 		return -1;
@@ -83,47 +84,49 @@ int close_client() {
 	if (socket == 0)
 		return 1;
 
-	clientSocket= 0;
+	clientSocket = 0;
 	return close(socket);
 }
 
 //return num of bytes read from the file on success, -1 else
-int sendData(FILE* fp, short blockNumber, int sockfd, const struct sockaddr *dest_adrr, socklen_t addrLen) {
-	if (fseek(fp, blockNumber*SIZE, SEEK_SET)) {
+int sendData(const struct sockaddr *dest_adrr) {
+	if (fseek(file, blockNumber*SIZE, SEEK_SET)) {
 		perror("fseek");
 		return -1;
 	}
 	char buf[SIZE + 4];
-	short opcode = OPCODE_DATA;
-	if (sprintf(buf, "%hd%hd", opcode, blockNumber)) {
+	uint16_t opcode = htons(OPCODE_DATA);
+	uint16_t blkTons = htons(blockNumber);
+	if (sprintf(buf, "%hd%hd", opcode, blkTons)) {
 		perror("sprintf");
 		return -1;
 	}
 
-	int sizeRead = fread(buf, SIZE, 1, fp);
-	if (ferror(fp)) {
+	int sizeRead = fread(buf, SIZE, 1, file);
+	if (ferror(file)) {
 		perror("fread");
 		return -1;
 	}
-	sendto(sockfd, &buf, SIZE + 4, 0, dest_adrr, addrLen);
+	sendto(clientSocket, buf, SIZE + 4, 0, dest_adrr, sizeof(dest_adrr));
 	return sizeRead;
 }
 
 //returns 0 on success, -1 else
-int sendAck(short blockNumber, int sockfd, const struct sockaddr *dest_adrr, socklen_t addrLen) {
+int sendAck(const struct sockaddr *dest_adrr) {
 	char buf[4];
-	short opcode = OPCODE_ACK;
-	if (sprintf(buf, "%hd%hd", opcode, blockNumber) < 0) {
+	uint16_t opcode = htons(OPCODE_DATA);
+	uint16_t blkTons = htons(blockNumber);
+	if (sprintf(buf, "%hd%hd", opcode, blkTons) < 0) {
 		perror("sprintf");
 		return -1;
 	}
-	sendto(sockfd, &buf, SIZE + 4, 0, dest_adrr, addrLen);
+	sendto(clientSocket, buf, 4, 0, dest_adrr, sizeof(dest_adrr));
 	return 0;
 }
 
-int sendError(short errorCode, char* errMsg, int sizeMsg) {
+int sendError(uint16_t errorCode, char* errMsg, int sizeMsg) {
 	char buf[200];
-	if (sprintf(buf, "%lh%s0", errorCode, errMsg) < 0) {
+	if (sprintf(buf, "%hd%s0", errorCode, errMsg) < 0) {
 		perror("sprintf");
 		return -1;
 	}
@@ -137,7 +140,7 @@ int sendError(short errorCode, char* errMsg, int sizeMsg) {
 //If so, updates the buf to contain the data (only in DATA case)
 //on time out returns -3
 
-int receive_message(int s, char* buf, struct sockaddr_in* source, short opcode, short blockNumber) {
+int receive_message(int s, char* buf, struct sockaddr_in* source, uint16_t opcode, uint16_t blockNumber) {
 	socklen_t fromlen = sizeof(struct sockaddr_in);
 	char bufRecive[518];
 	setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(struct timeval));
@@ -148,7 +151,7 @@ int receive_message(int s, char* buf, struct sockaddr_in* source, short opcode, 
 		else
 			return -1;
 	}
-	short currBlockNum, currOpCode;
+	uint16_t currBlockNum, currOpCode;
 	sscanf(bufRecive, "%hd%hd%s", currOpCode, currBlockNum, buf);
 	if (currBlockNum != blockNumber)
 		return -2;
@@ -157,8 +160,8 @@ int receive_message(int s, char* buf, struct sockaddr_in* source, short opcode, 
 	return received;
 }
 
-short getOpCode(char* buf) {
-	short op;
+uint16_t getOpCode(char* buf) {
+	uint16_t op;
 	if (sscanf(buf, "%hd", op) < 0) {
 		perror("sscanf");
 		return -1;;
@@ -167,7 +170,7 @@ short getOpCode(char* buf) {
 }
 
 int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
-	short opcode;
+	uint16_t opcode;
 	char* fileName;
 	struct stat fdata;
 	if (sscanf(bufRecive, "%hd0%s", opcode, fileName) != 2) {
@@ -175,12 +178,12 @@ int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
 		return -1;
 	}
 	if (opcode == OPCODE_RRQ) {
-		if (stat(fileName, &fdata) != 0){
-			if (errno == ENOENT || errno == ENOTDIR){
+		if (stat(fileName, &fdata) != 0) {
+			if (errno == ENOENT || errno == ENOTDIR) {
 				//TODO error
 			}
 		}
-		if (S_ISDIR(fdata.st_mode)){
+		if (S_ISDIR(fdata.st_mode)) {
 			//TODO error
 		}
 		file = fopen(fileName, O_RDONLY);
@@ -200,19 +203,19 @@ int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
 	}
 	else {
 		// check if the file already exists
-		if (stat(fileName, &fdata) == 0){
+		if (stat(fileName, &fdata) == 0) {
 			//TODO error
 			//send_error_message(source, ERROR_FILE_ALREADY_EXISTS, ERRDESC_WRQ_FILE_ALREADY_EXISTS);
 		}
 		// ENOENT means there is no file, otherwise there is a problem
-		if (errno != ENOENT){
+		if (errno != ENOENT) {
 			//TODO error
 			//send_file_transfer_error_message(source, ERRDESC_STAT_FAILED);
 		}
 
 		// open the file
 		file = open(g_path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-		if (file == -1){
+		if (file == -1) {
 			//ERROR
 		}
 		// open a new client socket
@@ -255,16 +258,21 @@ int init_server() {
 	return sockfd;
 }
 
-static int addrcmp(struct sockaddr_in* addr1, struct sockaddr_in* addr2){
+static int addrcmp(struct sockaddr_in* addr1, struct sockaddr_in* addr2) {
 	return memcmp(addr1, addr2, sizeof(struct sockaddr_in));
 }
 
-int handleWriting(char* buf) {
+int handleWriting(char* buf, const struct sockaddr *dest_adrr) {
 	char toWrite[518];
-	short op, block;
+	uint16_t op, block;
 	sscanf(buf, "%hd%hd%s", op, block, toWrite);
-	if (block != blockNumber + 1) {
-		//error
+	if (block != blockNumber) {
+		if (block == blockNumber - 1) {
+			blockNumber--;
+			sendAck(dest_adrr);
+			blockNumber++;
+			return -2;
+		}
 	}
 	int len = strlen(toWrite);
 	int write = fwrite(toWrite, 1, len, file);
@@ -275,12 +283,11 @@ int handleWriting(char* buf) {
 	if (DEBUG) {
 		printf("Written %d\n", len);
 }
-	blockNumber = block;
-	return toWrite;
+	return len;
 }
 
 int handleReading(char* buf) {
-	short op, block;
+	uint16_t op, block;
 	sscanf(buf, "%hd%hd", op, block);
 	if (op == OPCODE_ACK) {
 		if (blockNumber != block ) {
@@ -289,7 +296,7 @@ int handleReading(char* buf) {
 		else
 			sendData(file, blockNumber, serverSocket, client, sizeof(client));
 	}
-	else if(op==OPCODE_ERROR)
+	else if (op == OPCODE_ERROR)
 	{
 		//retransmit!
 	}
@@ -299,7 +306,7 @@ int handleReading(char* buf) {
 
 /*return function that we need to use..
 	return values- think about this later..*/
-int handle(short op, char* buf, struct sockaddr_in* source) {
+int handle(uint16_t op, char* buf, struct sockaddr_in* source) {
 	if (clientSocket != 0 && addrcmp(source, &clientSocket)) {
 		//send error- unknown client!
 	}
@@ -314,17 +321,20 @@ int handle(short op, char* buf, struct sockaddr_in* source) {
 			if (state == -1)
 				state = OPCODE_RRQ;
 		}
-		return handleFirstRequest(buf,source);
+		return handleFirstRequest(buf, source);
 	}
 	else if (op == OPCODE_DATA) {
 		if (state == OPCODE_RRQ || state == -1)
 			return -2;
 		else { 
-			int writen=handleWriting(buf);
 			
+			int writen = handleWriting(buf, source);
+			if (writen > 0) {
 			sendAck(source);
 			if (writen < SIZE) {//DONE
 				return 1;
+			}
+				blockNumber++;
 			}
 			return 0;
 		}
@@ -333,10 +343,10 @@ int handle(short op, char* buf, struct sockaddr_in* source) {
 	else if (op == OPCODE_ACK ) {
 		if (state == OPCODE_WRQ || state == -1)
 			return -2;
-		else
+		else {}
 			//TODO..
 	}
-	else
+	else {}
 		//unexpected op code- tell the son of a bitch!
 }
 
@@ -354,7 +364,7 @@ int main(int argc, char* argv[]) {
 	struct stat statbuf;
 	char buf[512];
 	char fileName[100];
-	short op;
+	uint16_t op;
 	struct sockaddr_in source;
 	int recv;
 	int func;
@@ -362,7 +372,7 @@ int main(int argc, char* argv[]) {
 	struct timeval time = { 3,0 };
 
 	while (TRUE) {
-		recv = receive_message(clientSocket == 0 ? sockfd : clientSocket, buf, &source,);
+		recv = receive_message(clientSocket == 0 ? sockfd : clientSocket, buf, &source, );
 		if (recv < 0) {
 			//handle..
 		}
