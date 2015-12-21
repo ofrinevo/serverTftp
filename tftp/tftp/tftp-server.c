@@ -54,7 +54,7 @@
 		"Internal server error."
 
 #define SIZE 512
-#define PORT 69
+#define PORT 6900
 #define TRUE 1
 #define FALSE 0
 #define DEBUG 1
@@ -295,7 +295,7 @@ int init_server() {
 	//socklen_t addrlen = sizeof(remaddr);
 	int sockfd;
 	if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-		perror("Error creating socket\n");
+		perror("Error creating socket");
 		return -1;
 	}
 	memset((char*)&myaddr, 0, sizeof(myaddr));
@@ -303,7 +303,7 @@ int init_server() {
 	myaddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	myaddr.sin_port = htons(PORT);
 	if (bind(sockfd, (struct sockaddr *)&myaddr, sizeof(myaddr)) < 0) {
-		perror("Error binding\n");
+		perror("Error binding");
 		close(sockfd);
 		return -1;
 	}
