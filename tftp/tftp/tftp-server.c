@@ -218,6 +218,7 @@ int file_error_message(const char* err_desc, struct sockaddr_in* source)
 		sendError(3, ERRDESC_ALLOC_EXCEEDED,source);
 	else
 		sendError(0, err_desc,source);
+	return 0;
 }
 
 int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
@@ -231,21 +232,21 @@ int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
 	if (opcode == OPCODE_RRQ) {
 		if (stat(fileName, &fdata) != 0) {
 			if (errno == ENOENT || errno == ENOTDIR) {
-				sendError(1, ERRDESC_RQ_FILE_NOT_FOUND,source);
+				return sendError(1, ERRDESC_RQ_FILE_NOT_FOUND,source);
 			}
 		}
 		if (S_ISDIR(fdata.st_mode)) {
 			//error not defined
-			sendError(0, ERRDESC_RQ_FILE_IS_A_DIRECTORY,source);
+			return sendError(0, ERRDESC_RQ_FILE_IS_A_DIRECTORY,source);
 		}
 		file = fopen(fileName, O_RDONLY);
 		if (file == -1) {
-			file_error_message(ERRDESC_OPEN_FAILED,source);
+			return file_error_message(ERRDESC_OPEN_FAILED,source);
 	}
 		// open a new client socket
 		if (init_client()) {
 			close(file);
-			sendError(0, ERRDESC_INTERNAL_ERROR, source);
+			return sendError(0, ERRDESC_INTERNAL_ERROR, source);
 			// send_error_message(source, ERROR_NOT_DEFINED, ERRDESC_INTERNAL_ERROR);
 		}
 		state = OPCODE_RRQ;
@@ -257,22 +258,22 @@ int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
 	else {
 		// check if the file already exists
 		if (stat(fileName, &fdata) == 0) {
-			sendError(6, ERRDESC_WRQ_FILE_ALREADY_EXISTS,source);
+			return sendError(6, ERRDESC_WRQ_FILE_ALREADY_EXISTS,source);
 		}
 		// ENOENT means there is no file, otherwise there is a problem
 		if (errno != ENOENT) {
-			file_error_message(ERRDESC_STAT_FAILED,source);
+			return file_error_message(ERRDESC_STAT_FAILED,source);
 		}
 
 		// open the file
 		file = open(g_path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 		if (file == -1) {
-			file_error_message(ERRDESC_WRQ_UNABLE_TO_CREATE_FILE,source);
+			return file_error_message(ERRDESC_WRQ_UNABLE_TO_CREATE_FILE,source);
 		}
 		// open a new client socket
 		if (init_client()) {
 			close(file);
-			sendError(0, ERRDESC_INTERNAL_ERROR,source);
+			return sendError(0, ERRDESC_INTERNAL_ERROR,source);
 		}
 
 		state = OPCODE_WRQ;
@@ -353,14 +354,14 @@ int handleReading(char* buf) {
 	return values- think about this later..*/
 int handle(uint16_t op, char* buf, struct sockaddr_in* source) {
 	if (clientSocket != 0 && addrcmp(source, &clientSocket)) {
-		sendError(5, ERRDESC_UNKNOWN_TID, source);
+		return sendError(5, ERRDESC_UNKNOWN_TID, source);
 	}
 	if (op == OPCODE_RRQ || op == OPCODE_WRQ) {
 		if (state != -1) {
 			if (state == OPCODE_RRQ)
-				sendError(4, ERRDESC_UNEXPECTED_OPCODE_DURING_READ_IN_PROGRESS,source);
+				return sendError(4, ERRDESC_UNEXPECTED_OPCODE_DURING_READ_IN_PROGRESS,source);
 			else
-				sendError(4, ERRDESC_UNEXPECTED_OPCODE_DURING_WRITE_IN_PROGRESS, source);
+				return sendError(4, ERRDESC_UNEXPECTED_OPCODE_DURING_WRITE_IN_PROGRESS, source);
 			return -2;
 		}
 		if (op == OPCODE_RRQ) {
@@ -403,6 +404,7 @@ int handle(uint16_t op, char* buf, struct sockaddr_in* source) {
 		}
 		else if (state == -1) {
 			sendError(4, ERRDESC_UNEXPECTED_OPCODE_DURING_IDLE, source);
+			return -2;
 		}
 		else {}
 			//TODO..
