@@ -112,7 +112,6 @@ int init_client()
 	}*/
 
 	clientSocket = new_socket;
-	printf("c_socket:%d\n", clientSocket);
 	return 0;
 }
 
