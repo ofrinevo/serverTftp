@@ -133,19 +133,19 @@ int sendData(const struct sockaddr_in *dest_adrr) {
 		return -1;
 	}
 	char buf[SIZE + 4];
+	
 	short opcode = htons(OPCODE_DATA);
 	short blkTons = htons(blockNumber);
-	if (sprintf(buf, "%hd%hd", opcode, blkTons)) {
-		perror("sprintf");
-		return -1;
-	}
+	((uint16_t*)buf)[0] = opcode;
+	((uint16_t*)buf)[1] = blkTons;
+	
 
 	int sizeRead = fread(buf, SIZE, 1, file);
 	if (ferror(file)) {
 		perror("fread");
 		return -1;
 	}
-	sendto(clientSocket, buf, SIZE + 4, 0, (struct sockaddr*)dest_adrr,
+	sendto(clientSocket, &buf, SIZE + 4, 0, (struct sockaddr*)dest_adrr,
 		sizeof(struct sockaddr_in));
 	return sizeRead;
 }
@@ -157,21 +157,28 @@ int sendAck(const struct sockaddr_in *dest_adrr) {
 	uint16_t blkTons = htons(blockNumber);
 	buf[0] = htons(OPCODE_ACK);
 	buf[1] = htons(blockNumber);
-	printf("Sent to %d the buf %hd and %hd\n", clientSocket, ntohs(opcode), ntohs(blkTons));
+	printf("Sennding ack: op %hd and block# %hd\n", ntohs(opcode), ntohs(blkTons));
 	
 	return sendto(clientSocket, &buf, 4, 0, (struct sockaddr*)dest_adrr, sizeof(struct sockaddr_in));
 }
 
 int sendError(short errorCode, const char* errMsg, const struct sockaddr_in* source) {
-	int sizeMsg = sizeof(errMsg);
+	//int sizeMsg = sizeof(errMsg);
 	char buf[200];
-	int len = 2 * sizeof(short) + sizeMsg + sizeof(short);
-	short op = OPCODE_ERROR;
-	if (sprintf(buf, "%hd%hd%s0", op, errorCode, errMsg) < 0) {
-		perror("sprintf");
-		return -1;
+	
+	short op = htons(OPCODE_ERROR);
+	short err = htons(errorCode);
+	((uint16_t*)buf)[0] = op;
+	((uint16_t*)buf)[1] = err;
+	int i = 0;
+	while (errMsg[i] != '\0') {
+		buf[i + 4] = errMsg[i];
+		i++;
 	}
-	sendto(clientSocket, buf, len, 0, (struct sockaddr*)source,
+	buf[i + 4] = '0';
+	int len = i+4;
+	printf("sending error: %s",errMsg);
+	sendto(clientSocket, &buf, len, 0, (struct sockaddr*)source,
 		sizeof(struct sockaddr_in));
 	return 0;
 }
@@ -266,7 +273,7 @@ int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
 		}
 
 		// open the file
-		file = fopen(fileName, "w+");
+		file = fopen(fileName, "w");
 		if (file == NULL) {
 			return file_error_message(ERRDESC_WRQ_UNABLE_TO_CREATE_FILE, source);
 		}
@@ -319,11 +326,17 @@ static int addrcmp(struct sockaddr_in* addr1, struct sockaddr_in* addr2) {
 int handleWriting(char* buf, const struct sockaddr_in *dest_adrr) {
 	char toWrite[518];
 	short op, block;
-	sscanf(buf+4, "%s", toWrite);
+	
 	op = (buf[1]);
 	block = (buf[3]);
 	printf("Recived op:%hd and block:%hd\n", op, block);
-	printf("the string is: %s\n", toWrite);
+	int i = 0;
+	while (buf[i + 4] != '\0' && i != 512) {
+		toWrite[i] = buf[i + 4];
+		i++;
+	}
+
+	toWrite[i] = '0';
 	if (block != blockNumber) {
 		if (block == blockNumber - 1) {
 			blockNumber--;
@@ -334,16 +347,16 @@ int handleWriting(char* buf, const struct sockaddr_in *dest_adrr) {
 		else
 			return -1;
 	}
-	int len = strlen(toWrite);
-	int write = fwrite(toWrite, 1, len, file);
-	if (write != len) {
+	//int len = strlen(toWrite);
+	int write = fwrite(toWrite, 1, i, file);
+	if (write != i) {
 		perror("write");
 		return -1;
 	}
 	if (DEBUG) {
-		printf("Written %d\n", len);
+		printf("Written %d\n", i);
 	}
-	return len;
+	return write;
 }
 
 int handleReading(char* buf, struct sockaddr_in* source) {
@@ -404,6 +417,7 @@ int handle(short op, char* buf, struct sockaddr_in* source) {
 			if (writen > 0) {
 				sendAck(source);
 				if (writen < SIZE) {//DONE
+					printf("returning 1\n");
 					return 1;
 				}
 				//blockNumber++;
@@ -467,6 +481,9 @@ int main(int argc, char* argv[]) {
 			state = -1;
 			//clientSocket = 0;
 			close_client();
+			fclose(file);
+			blockNumber = 0;
+			continue;
 		}
 		blockNumber++;
 		//func= -2 or -1 error
