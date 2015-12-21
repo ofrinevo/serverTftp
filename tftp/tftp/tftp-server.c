@@ -190,7 +190,8 @@ int sendError(short errorCode, const char* errMsg, const struct sockaddr_in* sou
 //If so, updates the buf to contain the data (only in DATA case)
 //on time out returns -3
 
-int receive_message(int s, char* buf, struct sockaddr_in* source) {
+int receive_message(int s, char buf[512], struct sockaddr_in* source) {
+	printf("socket for recv= %d",s);
 	socklen_t fromlen = sizeof(struct sockaddr_in);
 	//char bufRecive[518];
 	//setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(struct timeval));
@@ -237,6 +238,7 @@ int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
 	}
 
 	if (opcode == OPCODE_RRQ) {
+		
 		if (stat(fileName, &fdata) != 0) {
 			if (errno == ENOENT || errno == ENOTDIR) {
 				return sendError(1, ERRDESC_RQ_FILE_NOT_FOUND, source);
@@ -471,6 +473,7 @@ int main(int argc, char* argv[]) {
 	while (TRUE) {
 		//printf("client socket1 is: %d\n", ntohs(source.sin_port));
 		recv = receive_message(clientSocket == 0 ? sockfd : clientSocket, buf, &source);
+
 		if (recv < 0) {
 			printf("error here\n");
 		}
