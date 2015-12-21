@@ -145,7 +145,8 @@ int sendData(const struct sockaddr_in *dest_adrr) {
 		perror("fread");
 		return -1;
 	}
-	sendto(clientSocket, buf, SIZE + 4, 0, dest_adrr, sizeof(dest_adrr));
+	sendto(clientSocket, buf, SIZE + 4, 0, (struct sockaddr*)dest_adrr,
+		sizeof(struct sockaddr_in));
 	return sizeRead;
 }
 
@@ -158,7 +159,8 @@ int sendAck(const struct sockaddr_in *dest_adrr) {
 		perror("sprintf");
 		return -1;
 	}
-	sendto(clientSocket, buf, 4, 0, dest_adrr, sizeof(dest_adrr));
+	sendto(clientSocket, buf, 4, 0, (struct sockaddr*)dest_adrr,
+		sizeof(struct sockaddr_in));
 	return 0;
 }
 
@@ -171,7 +173,8 @@ int sendError(short errorCode,const char* errMsg, const struct sockaddr_in* sour
 		perror("sprintf");
 		return -1;
 	}
-	sendto(clientSocket, buf, len, 0, source, sizeof(source));
+	sendto(clientSocket, buf, len, 0, (struct sockaddr*)source,
+		sizeof(struct sockaddr_in));
 	return 0;
 }
 
@@ -297,7 +300,7 @@ int init_server() {
 	}
 	memset((char*)&myaddr, 0, sizeof(myaddr));
 	myaddr.sin_family = AF_INET;
-	myaddr.sin_addr.s_addr = htonl(INADDR_MY);
+	myaddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	myaddr.sin_port = htons(PORT);
 	if (bind(sockfd, (struct sockaddr *)&myaddr, sizeof(myaddr)) < 0) {
 		perror("Error binding\n");
