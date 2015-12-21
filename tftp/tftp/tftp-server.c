@@ -180,7 +180,7 @@ int sendError(uint16_t errorCode, char* errMsg, const struct sockaddr_in* source
 //If so, updates the buf to contain the data (only in DATA case)
 //on time out returns -3
 
-int receive_message(int s, char* buf, struct sockaddr_in* source, uint16_t opcode, uint16_t blockNumber) {
+int receive_message(int s, char* buf, struct sockaddr_in* source) {
 	socklen_t fromlen = sizeof(struct sockaddr_in);
 	char bufRecive[518];
 	setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(struct timeval));
@@ -193,10 +193,6 @@ int receive_message(int s, char* buf, struct sockaddr_in* source, uint16_t opcod
 	}
 	uint16_t currBlockNum, currOpCode;
 	sscanf(bufRecive, "%hd%hd%s", currOpCode, currBlockNum, buf);
-	if (currBlockNum != blockNumber)
-		return -2;
-	if (currOpCode != opcode)
-		return -2;
 	return received;
 }
 
