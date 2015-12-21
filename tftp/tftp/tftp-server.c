@@ -283,7 +283,7 @@ int handleReading(char* buf) {
 	short op, block;
 	sscanf(buf, "%hd%hd", op, block);
 	if (op == OPCODE_ACK) {
-		if (blockNumber != block) {
+		if (blockNumber != block ) {
 			//need to retransmit!
 		}
 		else
@@ -330,7 +330,7 @@ int handle(short op, char* buf, struct sockaddr_in* source) {
 		}
 			//handle writing and send ack
 	}
-	else if (op == OPCODE_ACK || OP == OPCODE_ERROR) {
+	else if (op == OPCODE_ACK ) {
 		if (state == OPCODE_WRQ || state == -1)
 			return -2;
 		else
