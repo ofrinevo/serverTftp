@@ -129,7 +129,7 @@ int close_client() {
 //return num of bytes read from the file on success, -1 else
 int sendData(const struct sockaddr_in *dest_adrr) {
 	printf("got here1\n");
-	if (fseek(file, blockNumber*SIZE, SEEK_SET)) {
+	if (fseek(file, (blockNumber-1)*SIZE, SEEK_SET)) {
 		perror("fseek");
 		return -1;
 	}
@@ -142,7 +142,13 @@ int sendData(const struct sockaddr_in *dest_adrr) {
 	((uint16_t*)buf)[1] = blkTons;
 	
 	printf("got here1\n");
-	int sizeRead = fread(buf+4, SIZE, 1, file);
+	int sizeRead = fread(buf+4, 1, SIZE, file);
+	if(DEBUG){
+		int i;
+		for(i=0; i<516; i++)
+			printf("%c",buf[i+4]);
+
+	}
 	if (ferror(file)) {
 		perror("fread");
 		return -1;
@@ -261,7 +267,7 @@ int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
 			// send_error_message(source, ERROR_NOT_DEFINED, ERRDESC_INTERNAL_ERROR);
 		}
 		state = OPCODE_RRQ;
-	//	blockNumber = 1;
+		blockNumber = 1;
 		client = *source;
 
 		sendData(source);
