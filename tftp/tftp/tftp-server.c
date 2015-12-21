@@ -54,7 +54,7 @@
 		"Internal server error."
 
 #define SIZE 512
-#define PORT 57982
+#define PORT 57989
 #define TRUE 1
 #define FALSE 0
 #define DEBUG 1
@@ -94,7 +94,7 @@ int init_client()
 		printf("Error: socket() failed: %s\n", strerror(errno));
 		return -1;
 	}
-	printf("Now i'm here\n");
+
 	bzero(&servaddr, sizeof(servaddr));
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -152,7 +152,8 @@ int sendData(const struct sockaddr_in *dest_adrr) {
 
 //returns 0 on success, -1 else
 int sendAck(const struct sockaddr_in *dest_adrr) {
-	char buf[4];
+	char buf[2*sizeof(short)];
+
 	short opcode = htons(OPCODE_ACK);
 	short blkTons = htons(blockNumber);
 	if (sprintf(buf, "%hd%hd", opcode, blkTons) < 0) {
@@ -160,7 +161,8 @@ int sendAck(const struct sockaddr_in *dest_adrr) {
 		return -1;
 	}
 
-	sendto(clientSocket, buf, 4, 0, (struct sockaddr*)dest_adrr, sizeof(struct sockaddr_in));
+	printf("socket for client= %d\n", clientSocket);
+	sendto(clientSocket, buf, 2*sizeof(short), 0, (struct sockaddr*)dest_adrr, sizeof(struct sockaddr_in));
 
 	return 0;
 }
@@ -185,7 +187,8 @@ int sendError(short errorCode, const char* errMsg, const struct sockaddr_in* sou
 //If so, updates the buf to contain the data (only in DATA case)
 //on time out returns -3
 
-int receive_message(int s, char* buf, struct sockaddr_in* source) {
+int receive_message(int s, char buf[512], struct sockaddr_in* source) {
+	printf("socket for recv= %d",s);
 	socklen_t fromlen = sizeof(struct sockaddr_in);
 	char bufRecive[518];
 	//setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(struct timeval));
@@ -242,6 +245,7 @@ int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
 	}
 
 	if (opcode == OPCODE_RRQ) {
+		
 		if (stat(fileName, &fdata) != 0) {
 			if (errno == ENOENT || errno == ENOTDIR) {
 				return sendError(1, ERRDESC_RQ_FILE_NOT_FOUND, source);
@@ -463,6 +467,7 @@ int main(int argc, char* argv[]) {
 	while (TRUE) {
 
 		recv = receive_message(clientSocket == 0 ? sockfd : clientSocket, buf, &source);
+
 		if (recv < 0) {
 			printf("error here\n");
 		}
