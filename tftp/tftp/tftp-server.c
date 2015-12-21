@@ -266,7 +266,7 @@ int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
 		}
 
 		// open the file
-		file = fopen(fileName, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+		file = fopen(fileName, "w+");
 		if (file == NULL) {
 			return file_error_message(ERRDESC_WRQ_UNABLE_TO_CREATE_FILE, source);
 		}
@@ -342,8 +342,13 @@ int handleReading(char* buf, struct sockaddr_in* source) {
 	short op, block;
 	sscanf(buf, "%hd%hd", &op, &block);
 
-	if (blockNumber != block + 1) {
-		//need to retransmit!
+	if (blockNumber != block) {
+		if (block == blockNumber - 1) {
+			blockNumber--;
+			sendData(source);
+			blockNumber++;
+			return -2;
+		}
 	}
 	else
 		//sendData(file, blockNumber, serverSocket, source, sizeof(source));
