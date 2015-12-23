@@ -520,7 +520,6 @@ int main(int argc, char* argv[]) {
 //}
 */
 
-
 #include "tftp-server.h"
 
 #define SIZE 512
@@ -537,6 +536,8 @@ struct sockaddr_in client;
 int retransmitions = 0;
 short state = -1;
 
+int last_op = -1;
+int done_write = FALSE;
 
 int blockNumber;
 int clientSocket;
@@ -545,32 +546,51 @@ FILE* file = NULL;
 
 
 /*operation: message to retransmit:
-1=ACK	2= DATA*/
+1=ACK	2= DATA
+return 1 if retranssimted max_transsmitions
+*/
 int retransmit(int operation, const struct sockaddr_in *dest_adrr)
 {
-	int status;
 	// if we didn't retransmit MAX_RETRANSMISSIONS times, transmit again!
 	// maybe the message got lost. otherwise - disconnect
 	if (retransmitions >= NAX_RETRANS)
 	{
-		// close the file, disconnect from client
-		status = fclose(file);
-
-		state = -1;
-		close_client();
-		return  -2;//?
+		return 1;// SIGNAL the server to close the client and seek for other clients
 	}
 	else
 	{
 		if (operation == 1)
-			status = sendAck(dest_adrr);
+			sendAck(dest_adrr);
 		else if (operation == 2)
-			status = sendData(dest_adrr);
+			sendData(dest_adrr);
 		retransmitions++;
-		return status;
+		return -2; //arbitrary return value.. can be something else.. but not 1 or -4
 	}
 }
 
+
+//return sockfd, or -1 on error;
+int init_server() {
+	struct sockaddr_in myaddr;
+
+	//socklen_t addrlen = sizeof(remaddr);
+	int sockfd;
+	if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+		perror("Error creating socket");
+		return -1;
+	}
+	memset((char*)&myaddr, 0, sizeof(myaddr));
+	myaddr.sin_family = AF_INET;
+	myaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+	myaddr.sin_port = htons(PORT);
+	if (bind(sockfd, (struct sockaddr *)&myaddr, sizeof(myaddr)) < 0) {
+		perror("Error binding");
+		close(sockfd);
+		return -1;
+	}
+	serverSocket = sockfd;
+	return sockfd;
+}
 
 //return 1 on success, -1 otherwise
 int init_client()
@@ -634,7 +654,6 @@ int sendError(short errorCode, const char* errMsg, const struct sockaddr_in* sou
 	return 0;
 }
 
-
 int file_error_message(const char* err_desc, const struct sockaddr_in* source)
 {
 	if (errno == EACCES)
@@ -649,7 +668,6 @@ int file_error_message(const char* err_desc, const struct sockaddr_in* source)
 
 //return num of bytes read from the file on success, -1 else
 int sendData(const struct sockaddr_in *dest_adrr) {
-
 	if (fseek(file, (blockNumber - 1)*SIZE, SEEK_SET)) {
 		perror("fseek");
 		return -1;
@@ -686,14 +704,12 @@ int sendAck(const struct sockaddr_in *dest_adrr) {
 }
 
 
-
-
 // returns number of bytes read on success, -1 on error
 //Checks if opcode and blocknumber are correct
 //If so, updates the buf to contain the data (only in DATA case)
 //on time out returns -3
 
-int receive_message(int s, char buf[512], struct sockaddr_in* source) {
+int receive_message(int s, char buf[512], const struct sockaddr_in* source) {
 
 	socklen_t fromlen = sizeof(struct sockaddr_in);
 	int received = recvfrom(s, buf, SIZE + 4, 0, (struct sockaddr*)source, &fromlen);
@@ -706,10 +722,7 @@ short getOpCode(char* buf) {
 	return op;
 }
 
-
-
-
-int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
+int handleFirstRequest(char* bufRecive, const struct sockaddr_in* source) {
 	short opcode;
 	char fileName[100];
 	struct stat fdata;
@@ -750,6 +763,7 @@ int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
 		client = *source;
 
 		sendData(source);
+		last_op = 2; //DATA
 	}
 	else {
 		// check if the file already exists
@@ -780,40 +794,18 @@ int handleFirstRequest(char* bufRecive, struct sockaddr_in* source) {
 
 		state = OPCODE_WRQ;
 		//blockNumber = 1;
+		done_write = FALSE;
 		client = *source;
 
 		sendAck(source);
-
+		last_op = 1; //ACK
 	}
 
 	return 0;
 }
 
 
-
-int init_server() {
-	struct sockaddr_in myaddr;
-
-	//socklen_t addrlen = sizeof(remaddr);
-	int sockfd;
-	if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-		perror("Error creating socket");
-		return -1;
-	}
-	memset((char*)&myaddr, 0, sizeof(myaddr));
-	myaddr.sin_family = AF_INET;
-	myaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-	myaddr.sin_port = htons(PORT);
-	if (bind(sockfd, (struct sockaddr *)&myaddr, sizeof(myaddr)) < 0) {
-		perror("Error binding");
-		close(sockfd);
-		return -1;
-	}
-	serverSocket = sockfd;
-	return sockfd;
-}
-
-static int addrcmp(struct sockaddr_in* addr1, struct sockaddr_in* addr2) {
+static int addrcmp(const struct sockaddr_in* addr1,const struct sockaddr_in* addr2) {
 	return memcmp(addr1, addr2, sizeof(struct sockaddr_in));
 }
 
@@ -832,12 +824,12 @@ int handleWriting(char* buf, const struct sockaddr_in *dest_adrr) {
 	toWrite[i] = '\0';
 
 	if (block != blockNumber+1) {
-		if (block == blockNumber - 1) {
-			retransmit(1, dest_adrr);
+		if (block == blockNumber) {
+			return retransmit(1, dest_adrr);
 			/*blockNumber--;
 			sendAck(dest_adrr);
 			blockNumber++;*/
-			return -2;
+			//return -2;
 		}
 		else
 			return -1;
@@ -854,19 +846,20 @@ int handleWriting(char* buf, const struct sockaddr_in *dest_adrr) {
 	return write;
 }
 
-int handleReading(char* buf, struct sockaddr_in* source) {
+int handleReading(char* buf, const struct sockaddr_in* source) {
 	uint16_t  block;
 	block = ntohs(((uint16_t*)buf)[1]);
 	if (blockNumber != block) {
 		if (block == blockNumber - 1) {
-			retransmit(2, source);
+			return retransmit(2, source);
 			//sendData(source);
-			return -2;
+			//return -2;
 		}
 	}
 	else {
 		blockNumber++;
 		int sent = sendData(source);
+		last_op = 2;//DATA
 		if (sent < 512)
 			return 1;
 	}
@@ -875,7 +868,7 @@ int handleReading(char* buf, struct sockaddr_in* source) {
 
 /*return function that we need to use..
 	return values- think about this later..*/
-int handle(short op, char* buf, struct sockaddr_in* source) {
+int handle(short op, char* buf, const struct sockaddr_in* source) {
 	if (state != -1 && addrcmp(source, &client)) {
 
 		return sendError(5, UNKNOWN_TID, source);
@@ -912,8 +905,9 @@ int handle(short op, char* buf, struct sockaddr_in* source) {
 			int writen = handleWriting(buf, source);
 			if (writen > 0) {
 				sendAck(source);
+				last_op = 1; //ACK
 				if (writen < SIZE) {//DONE
-
+					
 					return 1;
 				}
 				//blockNumber++;
@@ -955,19 +949,24 @@ int main(int argc, char* argv[]) {
 	blockNumber = 0;
 	char buf[512];
 	short op;
-	struct sockaddr_in source;
+	const struct sockaddr_in source;
 	int recv;
 	int func;
+	int status;
 	while (TRUE) {
 
 		recv = receive_message(clientSocket == 0 ? sockfd : clientSocket, buf, &source);
 
 		if (recv < 0) {
 			if (errno == EAGAIN || errno == EWOULDBLOCK) {
-				//something went wrong
-				//or the last ack didnt sent and the client disconnected from the server
-				//--need to close the client socket
-				//or maybe the last operation didnt arrived to client so retransmit!
+				if (last_op != 0) {
+					status = retransmit(last_op, &source);
+					if (status == 1)
+						closeConnection();
+				}
+				else {
+					printf("Something went wrong!\n");
+				}
 			}
 			else
 				printf("UnKnown error\n");
@@ -977,10 +976,7 @@ int main(int argc, char* argv[]) {
 
 		func = handle(op, buf, &source);
 		if (func == 1) {
-			state = -1;
-			close_client();
-			fclose(file);
-			blockNumber = 0;
+			closeConnection();
 			continue;
 		}
 		if (func == -4) {
@@ -995,3 +991,14 @@ int main(int argc, char* argv[]) {
 	}
 	return 0;
 }
+
+void closeConnection() {
+	state = -1;
+	close_client();
+	fclose(file);
+	blockNumber = 0;
+	last_op = 0;
+}
+
+
+
