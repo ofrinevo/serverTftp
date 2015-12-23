@@ -60,12 +60,13 @@ int sendError(short errorCode, const char* errMsg, const struct sockaddr_in* sou
 int file_error_message(const char* err_desc, const struct sockaddr_in* source);
 int sendData(const struct sockaddr_in *dest_adrr);
 int sendAck(const struct sockaddr_in *dest_adrr);
-int receive_message(int s, char buf[512], struct sockaddr_in* source);
+int receive_message(int s, char buf[512],const struct sockaddr_in* source);
 short getOpCode(char* buf);
-int handleFirstRequest(char* bufRecive, struct sockaddr_in* source);
+int handleFirstRequest(char* bufRecive, const struct sockaddr_in* source);
 int init_server();
-static int addrcmp(struct sockaddr_in* addr1, struct sockaddr_in* addr2);
+static int addrcmp(const struct sockaddr_in* addr1,const struct sockaddr_in* addr2);
 int handleWriting(char* buf, const struct sockaddr_in *dest_adrr);
-int handleReading(char* buf, struct sockaddr_in* source);
-int handle(short op, char* buf, struct sockaddr_in* source);
+int handleReading(char* buf, const struct sockaddr_in* source);
+int handle(short op, char* buf, const struct sockaddr_in* source);
 int main(int argc, char* argv[]);
+void closeConnection();
