@@ -546,7 +546,7 @@ FILE* file = NULL;
 
 
 /*operation: message to retransmit:
-1=ACK	2= DATA
+operation : 1=ACK	2= DATA
 return 1 if retranssimted max_transsmitions
 */
 int retransmit(int operation, const struct sockaddr_in *dest_adrr)
@@ -572,8 +572,6 @@ int retransmit(int operation, const struct sockaddr_in *dest_adrr)
 //return sockfd, or -1 on error;
 int init_server() {
 	struct sockaddr_in myaddr;
-
-	//socklen_t addrlen = sizeof(remaddr);
 	int sockfd;
 	if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
 		perror("Error creating socket");
@@ -592,7 +590,7 @@ int init_server() {
 	return sockfd;
 }
 
-//return 1 on success, -1 otherwise
+//return 0 on success, -1 otherwise
 int init_client()
 {
 	struct sockaddr_in servaddr;
@@ -624,7 +622,7 @@ int init_client()
 	return 0;
 }
 
-
+//closing client
 int close_client() {
 	int socket = clientSocket;
 
@@ -636,7 +634,6 @@ int close_client() {
 }
 
 int sendError(short errorCode, const char* errMsg, const struct sockaddr_in* source) {
-	//int sizeMsg = sizeof(errMsg);
 	char buf[200];
 	bzero(buf, 200);
 	((uint16_t*)buf)[0] = htons(OPCODE_ERROR);
@@ -694,7 +691,6 @@ int sendData(const struct sockaddr_in *dest_adrr) {
 	return sizeRead;
 }
 
-//returns 0 on success, -1 else
 int sendAck(const struct sockaddr_in *dest_adrr) {
 	uint16_t buf[2];
 	buf[0] = htons(OPCODE_ACK);
@@ -705,10 +701,6 @@ int sendAck(const struct sockaddr_in *dest_adrr) {
 
 
 // returns number of bytes read on success, -1 on error
-//Checks if opcode and blocknumber are correct
-//If so, updates the buf to contain the data (only in DATA case)
-//on time out returns -3
-
 int receive_message(int s, char buf[512], const struct sockaddr_in* source) {
 
 	socklen_t fromlen = sizeof(struct sockaddr_in);
@@ -722,6 +714,7 @@ short getOpCode(char* buf) {
 	return op;
 }
 
+/*Handling the first request- RRQ or WRQ*/
 int handleFirstRequest(char* bufRecive, const struct sockaddr_in* source) {
 	short opcode;
 	char fileName[100];
@@ -804,7 +797,7 @@ int handleFirstRequest(char* bufRecive, const struct sockaddr_in* source) {
 	return 0;
 }
 
-
+/*return zero if equal, and non-zero otherwise*/
 static int addrcmp(const struct sockaddr_in* addr1,const struct sockaddr_in* addr2) {
 	return memcmp(addr1, addr2, sizeof(struct sockaddr_in));
 }
@@ -826,15 +819,10 @@ int handleWriting(char* buf, const struct sockaddr_in *dest_adrr) {
 	if (block != blockNumber+1) {
 		if (block == blockNumber) {
 			return retransmit(1, dest_adrr);
-			/*blockNumber--;
-			sendAck(dest_adrr);
-			blockNumber++;*/
-			//return -2;
 		}
 		else
 			return -1;
 	}
-	//int len = strlen(toWrite);
 	int write = fwrite(toWrite, 1, i, file);
 	if (write != i) {
 		perror("write");
@@ -852,8 +840,6 @@ int handleReading(char* buf, const struct sockaddr_in* source) {
 	if (blockNumber != block) {
 		if (block == blockNumber - 1) {
 			return retransmit(2, source);
-			//sendData(source);
-			//return -2;
 		}
 	}
 	else {
@@ -866,8 +852,10 @@ int handleReading(char* buf, const struct sockaddr_in* source) {
 	return 0;
 }
 
-/*return function that we need to use..
-	return values- think about this later..*/
+/*Function for handling messages, analayzing the recieved buffer and act propely
+	return values: 1= end of communication successfuly
+					-4= end of communication after Error accured
+					otherwise, some arbitrary value*/
 int handle(short op, char* buf, const struct sockaddr_in* source) {
 	if (state != -1 && addrcmp(source, &client)) {
 
@@ -906,11 +894,9 @@ int handle(short op, char* buf, const struct sockaddr_in* source) {
 			if (writen > 0) {
 				sendAck(source);
 				last_op = 1; //ACK
-				if (writen < SIZE) {//DONE
-					
+				if (writen < SIZE) {//DONE	
 					return 1;
 				}
-				//blockNumber++;
 			}
 
 			return 0;
@@ -961,15 +947,25 @@ int main(int argc, char* argv[]) {
 			if (errno == EAGAIN || errno == EWOULDBLOCK) {
 				if (last_op != 0) {
 					status = retransmit(last_op, &source);
-					if (status == 1)
+					if (status == 1) {
 						closeConnection();
+						continue;
+					}
+					
 				}
-				else {
-					printf("Something went wrong!\n");
+				else { //shouldnt get here, but if so, disconnect the client..
+					printf("Unkown error, terminatin connection with current client\n");
+					closeConnection();
+					continue;
 				}
+					
 			}
-			else
+			else {
 				printf("UnKnown error\n");
+				state = -1;
+				blockNumber = 0;
+				continue;
+			}
 		}
 
 		op = getOpCode(buf);
@@ -982,11 +978,9 @@ int main(int argc, char* argv[]) {
 		if (func == -4) {
 			state = -1;
 			blockNumber = 0;
+			last_op = 0;
 			continue;
 		}
-
-		//if (state == OPCODE_WRQ)
-			//blockNumber++;
 		bzero(buf, SIZE + 4);
 	}
 	return 0;
@@ -999,6 +993,5 @@ void closeConnection() {
 	blockNumber = 0;
 	last_op = 0;
 }
-
 
 
